@@ -6,6 +6,8 @@
 
 **Mande a timeline inteira — ou só os clipes selecionados — do Premiere Pro e do After Effects direto pra timeline do DaVinci Resolve, com um clique.** Sem exportar arquivo nenhum: os clipes chegam prontos pra editar, com os keyframes e as curvas do jeito que você fez — sem virar Fusion, sem virar compound clip.
 
+![como é: Premiere/After → um clique → DaVinci](docs/img/fluxo.svg)
+
 ### Por que ele é diferente
 
 - **Suas animações continuam animações** — posição, tamanho, rotação e opacidade chegam com as mesmas curvas que você fez: dá pra continuar mexendo no Resolve em vez de refazer do zero. A rampa de velocidade vai com **os mesmos keyframes que você criou** (Editável, padrão) ou **um keyframe a cada quadro** (Precisa) — você escolhe no painel. E a rampa do Premiere sai mesmo o Premiere não deixando ler isso por fora: o A2R pega a curva direto do arquivo do projeto. Nenhuma outra ponte gratuita faz isso.
@@ -33,6 +35,8 @@ Para remover: `DESINSTALAR.bat` / `DESINSTALAR.command`.
 
 ## Uso
 
+![o painel](docs/img/painel.png)
+
 **Mandar clipes ou a timeline inteira** — no Premiere ou no After:
 
 1. Selecione os clipes que quer mandar (ou não selecione nada: vai tudo) e clique **Enviar ao DaVinci** (ou **Copiar** + **Colar**).
@@ -47,6 +51,12 @@ O projeto já foi pro Resolve e o cliente pediu alteração? Você troca os clip
 - **Destino › Nova timeline** — cria uma timeline nova com o nome da sequência/comp, na resolução e no fps da origem. **Mesmo nome** — cola na timeline que já existe: substitui só os clipes que mudaram e mantém o resto. É o modo das revisões.
 - **Rampa › Editável** (padrão) — a rampa chega **com os mesmos keyframes que você criou**: dá pra continuar mexendo nela no Resolve e ela fica bem perto da original.
 - **Rampa › Precisa** — **um keyframe a cada quadro**: a curva enche de keyframes, mas sai igualzinha à original — pra quando ela tem que bater frame a frame.
+
+**É assim que a rampa chega** — mesmo take, dados reais. A linha tracejada é a curva original; os círculos são os keyframes:
+
+![a rampa saindo do Premiere nos dois modos](docs/img/rampa-premiere.svg)
+
+![a rampa saindo do After nos dois modos](docs/img/rampa-ae.svg)
 
 **Auto-update**: o painel procura versão nova toda vez que abre. Quando sai, aparece um cartão — **um clique baixa e instala**; depois é só reabrir o programa.
 
