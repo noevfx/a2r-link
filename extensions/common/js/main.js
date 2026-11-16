@@ -304,8 +304,8 @@
       var d = r.data, n = d && (PR ? (d.clips || []).length + (d.audio || []).length : (d.layers || []).length);
       if (!d || d.erro || !n) { estado("Nada para copiar", "err"); card("aviso", T("Nada para copiar", "Nothing to copy"), '<div class="caminho">' + T("Selecione " + UNID + "s de vídeo e tente de novo.", "Select video " + UNID + "s and try again.") + '</div>'); return cb && cb(false); }
       function grava() {
-        var sd = $("selDestino");
-        d.destino = (sd && sd.value === "existente") ? "existente" : "nova";   // o destino viaja no clipboard
+        d.destino = chDestino.on() ? "nova" : "existente";   // o destino e o tipo de rampa viajam no clipboard
+        d.rampa = chRampa.on() ? "editavel" : "precisa";
         fs.mkdirSync(path.dirname(clipPath(c)), { recursive: true });
         fs.writeFileSync(clipPath(c), JSON.stringify({ source: PR ? "premiere" : "ae", data: d }, null, 1), "utf-8");
       }
@@ -405,9 +405,42 @@
     });
   }
 
+  // chave liga/desliga de duas opcoes: ligada (azul, bolinha a direita) = opcao da direita. A escolha fica guardada no painel.
+  function chave(id, guarda, dicaOn, dicaOff) {
+    var b = $(id), esq = $(id + "Off"), dir = $(id + "On"), linha = $("row" + id.slice(2)), ligada = true;
+    try { if (window.localStorage.getItem(guarda) === "0") ligada = false; } catch (e) {}
+    function pinta() {
+      b.className = "sw" + (ligada ? " on" : "");
+      esq.className = "lado esq" + (ligada ? "" : " ativo");
+      dir.className = "lado dir" + (ligada ? " ativo" : "");
+      b.title = ligada ? dicaOn : dicaOff;
+      try { b.setAttribute("aria-checked", ligada ? "true" : "false"); } catch (e) {}
+    }
+    function poe(v) {
+      if (ocupado) return;
+      ligada = !!v; pinta();
+      try { window.localStorage.setItem(guarda, ligada ? "1" : "0"); } catch (e) {}
+    }
+    b.onclick = function () { poe(!ligada); };
+    esq.onclick = function () { poe(false); };
+    dir.onclick = function () { poe(true); };
+    esq.title = dicaOff; dir.title = dicaOn;
+    pinta();
+    return { on: function () { return ligada; }, poe: poe,
+             trava: function (t) { b.disabled = t; linha.className = "chave" + (t ? " travada" : ""); } };
+  }
+  var chDestino = chave("chDestino", "a2r_destino_nova",
+    T("Sempre cria uma timeline nova no DaVinci", "Always creates a new timeline in DaVinci"),
+    T("Adiciona/substitui os takes na timeline com o nome da " + (PR ? "sequência" : "composição"), "Adds/replaces the takes in the timeline named after the " + (PR ? "sequence" : "composition")));
+  var chRampa = chave("chRampa", "a2r_rampa_editavel",
+    T("Rampa de velocidade com os mesmos nós da origem e alças: fácil de editar, curva aproximada", "Speed ramp with the same nodes as the source, with handles: easy to edit, approximate curve"),
+    T("Rampa de velocidade com um ponto por quadro: segue a origem quadro a quadro, difícil de editar", "Speed ramp with one point per frame: follows the source frame by frame, hard to edit"));
+  window.A2R_CHAVES = { destino: chDestino, rampa: chRampa };   // usado pelos testes
+
   function fim() {
     ocupado = false;
-    ["bCopiar", "bColar", "bEnviar", "selDestino"].forEach(function (id) { var e = $(id); if (e) e.disabled = false; });
+    ["bCopiar", "bColar", "bEnviar"].forEach(function (id) { var e = $(id); if (e) e.disabled = false; });
+    chDestino.trava(false); chRampa.trava(false);
     $("bEnviar").textContent = T("Enviar ao DaVinci", "Send to DaVinci");
     resumo(); checaDavinci();
   }
@@ -415,7 +448,8 @@
     return function () {
       if (ocupado) return;
       ocupado = true; logTxt = ""; $("log").textContent = "";
-      ["bCopiar", "bColar", "bEnviar", "selDestino"].forEach(function (id) { var e = $(id); if (e) e.disabled = true; });
+      ["bCopiar", "bColar", "bEnviar"].forEach(function (id) { var e = $(id); if (e) e.disabled = true; });
+      chDestino.trava(true); chRampa.trava(true);
       if (rotulo) $("bEnviar").innerHTML = '<span class="gira"></span>' + rotulo;
       card("aviso", T("Trabalhando...", "Working..."), "");
       fn(fim);
@@ -436,13 +470,11 @@
   $("bColar").textContent = T("Colar", "Paste");
   $("bColar").title = T("Monta no DaVinci o que foi copiado", "Builds in DaVinci what was copied");
   $("destinoRot").textContent = T("Destino", "Destination");
-  try {
-    var ops = $("selDestino").options;
-    ops[0].textContent = T("Nova timeline", "New timeline");
-    ops[0].title = T("Sempre cria uma timeline nova no DaVinci", "Always creates a new timeline in DaVinci");
-    ops[1].textContent = T("Timeline de mesmo nome", "Same-named timeline");
-    ops[1].title = T("Adiciona/substitui os takes na timeline com o nome da " + (PR ? "sequência" : "composição"), "Adds/replaces the takes in the timeline named after the " + (PR ? "sequence" : "composition"));
-  } catch (e) {}
+  $("chDestinoOff").textContent = T("Mesmo nome", "Same name");
+  $("chDestinoOn").textContent = T("Nova timeline", "New timeline");
+  $("rampaRot").textContent = T("Rampa", "Ramp");
+  $("chRampaOff").textContent = T("Precisa", "Precise");
+  $("chRampaOn").textContent = T("Editável", "Editable");
   try { document.querySelector("#detalhes summary").textContent = T("Detalhes", "Details"); } catch (e) {}
   try { var cv = config(); $("subtitulo").textContent = T("Adobe para DaVinci Resolve", "Adobe to DaVinci Resolve") + (cv && cv.versao ? " · v" + cv.versao : ""); } catch (e) {}
   log("A2R Link (" + PROG + ") " + T("carregado", "loaded"));

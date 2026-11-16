@@ -33,9 +33,21 @@
     button.principal:disabled { background: #2a4f99; border-color: #2a4f99; }
     .linha { display: flex; gap: 8px; margin-bottom: 10px; }
     .linha button { flex: 1; }
-    .destino { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; font-size: 11px; color: #8d8d8d; }
-    .destino select { flex: 1; font-family: inherit; font-size: 12px; border-radius: 6px; border: 1px solid #4a4a4a; background: #333; color: #e2e2e2; padding: 7px 8px; cursor: pointer; }
-    .destino select:hover { background: #3f3f3f; }
+    .chaves { margin-bottom: 10px; }
+    .chave { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 11px; }
+    .chave .cat { flex: none; width: 46px; color: #8d8d8d; }
+    .chave .lado { flex: 1 1 0; min-width: 0; color: #747474; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: color .18s; }
+    .chave .lado.esq { text-align: right; }
+    .chave .lado.ativo { color: #f0f0f0; }
+    .chave .lado.dir.ativo { color: #9dbcff; }
+    .sw { flex: none; position: relative; width: 38px; height: 20px; padding: 0; border-radius: 10px; border: 1px solid #4a4a4a; background: #3a3a3a; transition: background .18s, border-color .18s; }
+    .sw:hover { background: #454545; }
+    .sw i { position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: #bdbdbd; box-shadow: 0 1px 2px rgba(0,0,0,.45); transition: transform .18s cubic-bezier(.3,.7,.3,1), background .18s; }
+    .sw.on { background: #2f6fed; border-color: #2f6fed; }
+    .sw.on:hover { background: #4a82f0; }
+    .sw.on i { transform: translateX(18px); background: #fff; }
+    .sw:focus-visible { outline: 2px solid #7fa6ff; outline-offset: 2px; }
+    .chave.travada { opacity: .45; pointer-events: none; }
     .ok { background: #1f3a26; border: 1px solid #2e5a3a; } .ok .valor { color: #8fe0a0; }
     .aviso { background: #3a3220; border: 1px solid #5a4c2a; } .aviso .valor { color: #e8c878; }
     .erro { background: #3d2222; border: 1px solid #6a3030; } .erro .valor { color: #ff9a9a; }
@@ -77,12 +89,19 @@
     <button id="bCopiar" title="Le o que esta selecionado (ou tudo, se nada estiver) e guarda">Copiar</button>
     <button id="bColar" title="Monta no DaVinci o que foi copiado">Colar</button>
   </div>
-  <div class="destino">
-    <span id="destinoRot">Destino</span>
-    <select id="selDestino">
-      <option value="nova" selected>Nova timeline</option>
-      <option value="existente">Timeline de mesmo nome</option>
-    </select>
+  <div class="chaves">
+    <div class="chave" id="rowDestino">
+      <span class="cat" id="destinoRot">Destino</span>
+      <span class="lado esq" id="chDestinoOff">Mesmo nome</span>
+      <button class="sw on" id="chDestino" role="switch" aria-checked="true"><i></i></button>
+      <span class="lado dir ativo" id="chDestinoOn">Nova timeline</span>
+    </div>
+    <div class="chave" id="rowRampa">
+      <span class="cat" id="rampaRot">Rampa</span>
+      <span class="lado esq" id="chRampaOff">Precisa</span>
+      <button class="sw on" id="chRampa" role="switch" aria-checked="true"><i></i></button>
+      <span class="lado dir ativo" id="chRampaOn">Editável</span>
+    </div>
   </div>
 
   <div class="cartao oculto" id="resultado"></div>

@@ -13,7 +13,7 @@ Spec (version 1):
     "keys":   {"Pan": [[d, px], ...], "ZoomX": [[d, v], ...], ...}   # d = quadros desde o inicio do clipe NA TIMELINE
 } ] }
 """
-import os, sys, re, time, json, uuid, math, tempfile
+import os, sys, re, time, json, uuid, math, tempfile, bisect
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 if sys.platform == 'darwin':        # caminhos oficiais do scripting do DaVinci (documentacao Blackmagic)
     os.environ.setdefault('RESOLVE_SCRIPT_API', '/Library/Application Support/Blackmagic Design/DaVinci Resolve/Developer/Scripting')
@@ -131,92 +131,178 @@ def _fps_exato(f):
     return f
 
 
+RAMPA_NOS_EXTRAS = False    # False = so os nos da origem (mesma quantidade); True = nos extras ate fechar a tolerancia
+
+
 def _timemap_mapa(rm, rec0, fe, tot, mfps, uid):
-    """MediaTimemapBA para clipe com remap. Com rm['nodes'] ([d, s, eIn, eOut]) usa a forma EASED
-    do Studio 21 (nos esparsos + alcas = rampa EDITAVEL no Inspector); sem nos cai na amostragem densa.
-    Refino: o modelo eased do Resolve e 'canto suavizado' (controles em P) e nao cobre curvas que
-    divergem da corda entre nos; onde o desvio vs a amostragem real (rm['points']) passa de ~0.5
-    quadro de midia, entram pontos auxiliares lineares — a rampa continua esparsa e editavel, porem fiel."""
+    """MediaTimemapBA para clipe com remap. Com rm['nodes'] usa a forma EASED do Studio 21 (nos esparsos
+    + alcas = rampa EDITAVEL no Inspector); sem nos cai na amostragem densa.
+    O ease do Resolve e 'canto arredondado': entre nos a curva e a corda reta, e cada no com alca troca o
+    canto por uma cubica que sai tangente de uma corda e chega tangente na outra. Entao a curva de origem
+    vira o poligono das suas TANGENTES: os nos da origem marcam onde a curva e tocada, cada no do Resolve
+    fica no cruzamento de duas tangentes vizinhas e a alca cobre o trecho entre os dois toques. Uma rampa
+    do Premiere (velocidade A -> velocidade B) da 1 no. So entra toque extra onde o desvio contra a
+    verdade amostrada (rm['dense'] ou rm['points']) passa da tolerancia."""
     pts = rm['points']; src0 = pts[0][1]
     nds = rm.get('nodes')
     if not nds:
         pontos = ([(rec0, src0)] if rec0 > 1e-9 else []) + [(rec0 + d / fe, s) for d, s in pts[1:]]
         return L.timemap_encode(pontos, (tot - 1) / mfps, pontos[-1][0], uid)
-    denso = [(rec0 + d / fe, s) for d, s in pts]          # verdade amostrada do Premiere
+    denso = [(rec0, src0)]                                # verdade amostrada da origem
+    for d, s in (rm.get('dense') or pts)[1:]:
+        if rec0 + d / fe > denso[-1][0] + 1e-9:
+            denso.append((rec0 + d / fe, s))
+    dx = [q_[0] for q_ in denso]; fim = dx[-1]; q = 1.0 / fe
 
     def ref(t):
-        if t <= denso[0][0]:
-            return denso[0][1]
-        for i in range(1, len(denso)):
-            if t <= denso[i][0]:
-                a, b = denso[i - 1], denso[i]
-                return a[1] + (b[1] - a[1]) * (t - a[0]) / (b[0] - a[0])
-        return denso[-1][1]
+        if t <= rec0:
+            return src0
+        if t >= fim:
+            return denso[-1][1]
+        i = bisect.bisect_right(dx, t)
+        a, b = denso[i - 1], denso[i]
+        return a[1] + (b[1] - a[1]) * (t - a[0]) / (b[0] - a[0])
 
-    seq = sorted(([rec0 + d / fe, s, eIn, eOut] for d, s, eIn, eOut in nds if rec0 + d / fe > rec0 - 1e-6),
-                 key=lambda p_: p_[0])                    # nos antes do take sao descartados (quebrariam a ordem)
-    if not seq or abs(seq[0][0] - rec0) > 1e-6:
-        seq.insert(0, [rec0, src0, 0.0, 0.0])            # cabeca do take = origem (rec0, src0)
-    elif seq[0][0] - rec0 <= 1e-6:
-        seq[0] = [rec0, src0, seq[0][2], seq[0][3]]      # cola na origem conservando o ease do no
-    ded = [seq[0]]                                       # dedup por posicao (ordem ja garantida)
-    for p_ in seq[1:]:
-        if p_[0] - ded[-1][0] > 1e-9:
-            ded.append(p_)
-    seq = ded
-    if len(seq) < 2:                                     # nao sobrou no util: cai na amostragem densa
-        pontos = ([(rec0, src0)] if rec0 > 1e-9 else []) + [(rec0 + d / fe, s) for d, s in pts[1:]]
-        return L.timemap_encode(pontos, (tot - 1) / mfps, pontos[-1][0], uid)
+    def incl(t, lado):                                    # inclinacao de um lado so (3 pontos, 1 quadro de passo)
+        d = q * lado
+        if rec0 - 1e-9 <= t + 2 * d <= fim + 1e-9:
+            return (-3 * ref(t) + 4 * ref(t + d) - ref(t + 2 * d)) / (2 * d)
+        if rec0 - 1e-9 <= t + d <= fim + 1e-9:
+            return (ref(t + d) - ref(t)) / d
+        return None
 
-    TOL = 0.5                                            # tolerancia em quadros de midia
+    sobe = all(b_[1] >= a_[1] - 1e-9 for a_, b_ in zip(denso, denso[1:]))
 
-    def monta_handles():
-        out = []
-        for i, (rc, sc, eIn, eOut) in enumerate(seq):
-            h = None
-            prv = seq[i - 1] if i else (0.0, 0.0, 0.0, 0.0)
-            nxt = seq[i + 1] if i + 1 < len(seq) else None
-            seg_a, seg_b = rc - prv[0], (nxt[0] - rc) if nxt else 0.0
-            inX = -min(eIn, 1.0) * seg_a if seg_a > 1e-9 else 0.0
-            outX = min(eOut, 1.0) * seg_b if seg_b > 1e-9 else 0.0
-            if abs(inX) > 1e-6 or abs(outX) > 1e-6:
-                inY = inX * (sc - prv[1]) / seg_a if seg_a > 1e-9 else 0.0      # tangente = corda do segmento vizinho
-                outY = outX * (nxt[1] - sc) / seg_b if seg_b > 1e-9 else 0.0
-                h = [inX, inY, outX, outY, 0.0, 0.0]
-            out.append([rc, sc, h])
-        return out
+    def toque(t, liso=False):                             # liso = ponto no meio da curva (sem quina): uma inclinacao so
+        if liso and rec0 < t - q and t + q < fim:
+            c = (ref(t + q) - ref(t - q)) / (2 * q)
+            return [t, ref(t), c, c]
+        sl, sr = incl(t, -1), incl(t, 1)
+        sl, sr = (sr if sl is None else sl), (sl if sr is None else sr)
+        if sobe:                                          # curva que nunca volta: ruido da estimativa nao pode inventar reverso
+            sl, sr = max(sl, 0.0), max(sr, 0.0)
+        return [t, ref(t), sl, sr]
 
-    for _ in range(60):                                   # refino: ease onde da, pontos auxiliares onde nao da
-        cur = [[0.0, 0.0, None]] + monta_handles()
-        t, fim, passo = seq[0][0], seq[-1][0], 1.0 / (fe * 8)
-        mx, tm = 0.0, None
-        while t <= fim:
-            dv = abs(L.timemap_eval(cur, t) - ref(t)) * mfps
-            if dv > mx:
-                mx, tm = dv, t
-            t += passo
-        if mx <= TOL or tm is None:
-            break
-        ajustou = False
-        for i, (rc, sc, h) in enumerate(cur[1:], 1):
-            if not h:
+    ts = [rec0]
+    for t in sorted(rec0 + n_[0] / fe for n_ in nds):     # nos da origem dentro do take, a >= 1 quadro um do outro
+        if t - ts[-1] >= q and fim - t >= q:
+            ts.append(t)
+    ts.append(fim)
+    if fim - rec0 < 2 * q:
+        return L.timemap_encode([(fim, denso[-1][1])], (tot - 1) / mfps, fim, uid)
+    bps = [toque(t) for t in ts]
+    FOLGA = 0.98                                          # janelas vizinhas nao encostam uma na outra
+
+    def montar():
+        n = len(bps)
+        plano = [j in (0, n - 1) or abs(b[2] - b[3]) > 0.03 * max(1.0, abs(b[2]), abs(b[3])) for j, b in enumerate(bps)]
+        vert = [None] * (n - 1); ruins = []
+        for j in range(n - 1):
+            (ta, ya, _, sa), (tb, yb, sb, _) = bps[j], bps[j + 1]
+            c = (yb - ya) / (tb - ta); lim = 0.02 * max(1.0, abs(c))
+            if abs(sa - c) <= lim and abs(sb - c) <= lim:                 # trecho reto: a corda ja resolve
                 continue
-            seg_a = rc - cur[i - 1][0]
-            nxt = seq[i] if i < len(seq) else None
-            seg_b = (nxt[0] - rc) if nxt else 0.0
-            if rc + h[0] < tm < rc and seg_a > 1e-9:                    # desvio na janela de entrada
-                seq[i - 1][2] = max(0.0, (rc - tm) / seg_a) * 0.95      # recua o ease de entrada
-                ajustou = True
+            x = (yb - ya + sa * ta - sb * tb) / (sa - sb) if abs(sa - sb) > 1e-9 else None
+            yv = ya + sa * (x - ta) if x is not None else None
+            if x is None or not ta + 0.02 * (tb - ta) < x < tb - 0.02 * (tb - ta) or not min(ya, yb) - 0.25 / mfps <= yv <= max(ya, yb) + 0.25 / mfps:
+                ruins.append(j); plano[j] = plano[j + 1] = True         # tangentes nao se cruzam no trecho (curva vira dentro dele)
+                continue
+            vert[j] = [x, yv, ta, tb]
+        nos = []
+        for j, b in enumerate(bps):
+            if plano[j]:
+                nos.append([b[0], b[1], None, None])
+            if j < n - 1 and vert[j]:
+                nos.append(vert[j])
+        out = []
+        for i, (x, y, ta, tb) in enumerate(nos):          # alca sempre EM CIMA da corda real (fora dela o render sai preto)
+            h = None
+            if ta is not None:
+                pv, nx = nos[i - 1], nos[i + 1]
+                inX, outX = (ta - x) * FOLGA, (tb - x) * FOLGA
+                h = [inX, inX * (y - pv[1]) / (x - pv[0]), outX, outX * (nx[1] - y) / (nx[0] - x), 0.0, 0.0]
+            out.append((x, y, h))
+        return out, ruins
+
+    TOL = 1.0                                             # tolerancia em quadros de midia (x velocidade local, ver tol_t)
+    passo = q / 4
+
+    def tol_t(tt):                                        # adaptativa: quadro de midia errado e invisivel numa rajada
+        sl_ = abs(ref(tt + q) - ref(tt - q)) / (2 * q) if tt - q > rec0 else 1.0     # (imagem a 30x+), mas conta em trecho parado
+        return TOL * min(max(sl_, 1.0), 8.0)
+
+    def vira(j):                                          # quadro do trecho onde a velocidade mais foge da corda (pico/vale)
+        ta, tb = bps[j][0], bps[j + 1][0]; c = (bps[j + 1][1] - bps[j][1]) / (tb - ta)
+        t, melhor, tm = ta + q, -1.0, None
+        while t <= tb - q + 1e-9:
+            dv = abs((ref(t + q) - ref(t - q)) / (2 * q) - c)
+            if dv > melhor:
+                melhor, tm = dv, t
+            t += q
+        return tm
+
+    teto = None                                           # None = sem limite de nos
+    if not RAMPA_NOS_EXTRAS:
+        if not montar()[1]:
+            teto = 0                                      # os nos da origem bastam (rampa do Premiere): nada a refinar
+        else:                                             # curva vira entre dois nos (Bezier do AE): os toques saem da propria
+            teto = max(len(ts), len(nds))                 # curva, ate a MESMA quantidade de nos da origem
+            bps = [toque(rec0), toque(fim)]
+    for _ in range(60 if teto != 0 else 0):
+        out, ruins = montar()
+        if teto and len(out) >= teto and not ruins:
+            break
+        cur = [(0.0, 0.0, None)] + out
+        novo = None
+        for j in ruins:
+            if bps[j + 1][0] - bps[j][0] >= 2 * q:
+                novo = vira(j)
                 break
-            if rc < tm < rc + h[2] and seg_b > 1e-9:                    # desvio na janela de saida
-                seq[i - 1][3] = max(0.0, (tm - rc) / seg_b) * 0.95      # recua o ease de saida
-                ajustou = True
+        if novo is None:
+            t, tm, mrel = rec0, None, 0.0
+            while t <= fim:
+                rel = abs(L.timemap_eval(cur, t) - ref(t)) * mfps / tol_t(t)
+                if rel > mrel and all(abs(t - b_[0]) >= q for b_ in bps):     # so onde ainda cabe um toque novo
+                    mrel, tm = rel, t
+                t += passo
+            if mrel <= 1.0 or tm is None:
                 break
-        if ajustou:
-            continue
-        seq.append([tm, ref(tm), 0.0, 0.0])                            # ponto auxiliar linear na verdade
-        seq.sort(key=lambda p_: p_[0])
-    out = [(rc, sc, h) for rc, sc, h in monta_handles()]
+            novo = tm
+        novo = rec0 + round((novo - rec0) * fe) / fe      # toque novo sempre em quadro cheio (inclinacao limpa)
+        if any(abs(novo - b[0]) < 0.75 * q for b in bps):
+            break                                         # ja ha toque ali: nao da pra apertar mais
+        antes = list(bps)
+        bps.append(toque(novo, True)); bps.sort(key=lambda b_: b_[0])
+        if teto and len(montar()[0]) > teto:
+            bps = antes                                   # passaria da quantidade da origem: fica como estava
+            break
+    if teto:                                              # quantidade travada: acerta a POSICAO de cada toque (busca local)
+        def pior():
+            o_, r_ = montar()
+            if r_ or len(o_) > teto:
+                return 1e9
+            c_ = [(0.0, 0.0, None)] + o_
+            t, m = rec0, 0.0
+            while t <= fim:                               # erro medio em quadros de midia: privilegia o desenho geral da curva
+                m += abs(L.timemap_eval(c_, t) - ref(t)) * mfps
+                t += passo * 2
+            return m
+        base = pior()
+        for _ in range(6):
+            mexeu = False
+            for j in range(1, len(bps) - 1):
+                for d in (-8, -4, -2, -1, 1, 2, 4, 8):
+                    t = bps[j][0] + d * q
+                    if not bps[j - 1][0] + q <= t <= bps[j + 1][0] - q:
+                        continue
+                    velho = bps[j]; bps[j] = toque(t, True); e = pior()
+                    if e < base - 1e-6:
+                        base, mexeu = e, True
+                    else:
+                        bps[j] = velho
+            if not mexeu:
+                break
+    out, _ = montar()
     return L.timemap_encode_eased(out, (tot - 1) / mfps, out[-1][0], uid)
 
 
@@ -248,6 +334,18 @@ def build(spec, cleanup=True, log=print):
     r, p = _connect(); mp = p.GetMediaPool()
     clips = spec['clips']
     avisos = []
+    if spec.get('rampa') == 'precisa':      # chave "Rampa" do painel: um ponto por quadro (segue a origem), sem nos com alca
+        for c_ in clips + (spec.get('audio_clips') or []):
+            rm_ = c_.get('remap')
+            if rm_ and rm_.get('nodes'):
+                rm_.pop('nodes')
+                if rm_.get('dense'):
+                    pts_ = [rm_['dense'][0]]
+                    for q_ in rm_['dense'][1:]:
+                        if q_[0] > pts_[-1][0] + 1e-6:
+                            pts_.append(q_)
+                    if len(pts_) > 1:
+                        rm_['points'] = pts_
     # destino 'existente': a timeline de MESMO NOME recebe os takes (mesma posicao/trilha; colisao
     # = o antigo sai). Se nao existir, cai no fluxo normal com aviso. Os patches (timemap/keys) so
     # entram via DRT, entao o append tambem faz export -> patch -> reimport -> substitui a original.
@@ -281,20 +379,35 @@ def build(spec, cleanup=True, log=print):
         log(T('timeline existente "%s": adicionando/substituindo takes', 'existing timeline "%s": adding/replacing takes') % nome_final)
     else:
         tmp_nome = _nome_livre(p, '_tmp_%s' % uuid.uuid4().hex[:6])
+        fps_proj = None
+        if spec.get('fps'):   # timelineFrameRate e read-only apos a criacao: entra pelo frame rate do projeto
+            fr = float(spec['fps'])
+            fps_proj = p.GetSetting('timelineFrameRate')
+            alvo = str(int(round(fr))) if abs(fr - round(fr)) < 1e-4 else ('%g' % fr)
+            p.SetSetting('timelineFrameRate', alvo)
+        else:
+            log(T('AVISO: a sequencia nao informou taxa de quadros — a timeline herda a do projeto',
+                  'WARNING: the sequence did not report a frame rate — the timeline inherits the project one'))
         tl = mp.CreateEmptyTimeline(tmp_nome)
+        if fps_proj is not None:   # devolve o do projeto; a timeline fica com o dela
+            for _ in range(3):   # o restore as vezes nao pega de primeira — confirma pelo read-back
+                p.SetSetting('timelineFrameRate', fps_proj)
+                if abs(float(p.GetSetting('timelineFrameRate')) - float(fps_proj)) < 1e-3:
+                    break
         if not tl:
             raise RuntimeError(T('nao criou a timeline temporaria (aviso aberto no DaVinci? olhar os dois monitores)',
                                  'could not create the temporary timeline (a dialog open in DaVinci? check both monitors)'))
-        if spec.get('width') and spec.get('height') and spec.get('fps'):
+        if spec.get('width') and spec.get('height'):
             tl.SetSetting('useCustomSettings', '1')
             tl.SetSetting('timelineResolutionWidth', str(int(round(spec['width']))))
             tl.SetSetting('timelineResolutionHeight', str(int(round(spec['height']))))
-            fr = float(spec['fps'])
-            tl.SetSetting('timelineFrameRate', str(int(round(fr))) if abs(fr - round(fr)) < 1e-4 else str(fr))
     p.SetCurrentTimeline(tl)
     t0 = tl.GetStartFrame(); tl_fps = float(tl.GetSetting('timelineFrameRate'))
     W = int(tl.GetSetting('timelineResolutionWidth')); H = int(tl.GetSetting('timelineResolutionHeight'))
     log(T('timeline %dx%d @ %s fps', 'timeline %dx%d @ %s fps') % (W, H, tl_fps))
+    if not append_mode and spec.get('fps') and abs(tl_fps - float(spec['fps'])) > 0.02:
+        log(T('AVISO: a sequencia e %s fps mas a timeline saiu a %s fps — verifique',
+              'WARNING: the sequence is %s fps but the timeline came out at %s fps — please check') % (spec['fps'], tl_fps))
     # trilhas
     ntr = max([c.get('track', 1) for c in clips] + [t.get('track', 1) for t in spec.get('titulos') or []] + [a.get('track', 1) for a in spec.get('ajustes') or []] or [0])
     while tl.GetTrackCount('video') < ntr:
@@ -333,16 +446,18 @@ def build(spec, cleanup=True, log=print):
         mi = _midia(mp, c['media'], cache_midia, organizar, recursivo=append_mode)
         c['_total'] = max(1, int(float(mi.GetClipProperty('Frames') or 0)))
         rm = c.get('remap')
-        if rm:   # time remap: coloca o trecho de midia coberto pela curva e usa velocidade media so para a duracao ficar proxima
+        if rm:   # time remap: a janela de midia vai onde a curva cobre, mas o record so precisa
+            #      da duracao final — janela cheia cobria os vizinhos e o paste morria no lookup
             pts = rm['points']; total = c['_total']
             sa, sb = min(q[1] for q in pts), max(q[1] for q in pts)
             sf = max(0, int(math.floor(sa * c['media_fps']))); ef = min(total - 1, int(math.ceil(sb * c['media_fps'])))
             c['_rm'] = {'sf': sf, 'ef': ef, 'total': total}
-            ini, fim = sf, ef + 1
+            dr_media = max(1, int(round(math.ceil(pts[-1][0]) * c['media_fps'] / tl_fps)))   # round: ceil arredondava 359.0004 p/ 360 e cobria o vizinho
+            ini, fim = sf, min(total, sf + dr_media)
             if sa == sb:   # timemap plano = freeze frame: basta 1 quadro de janela (a curva estica)
                 fim = ini + 1
-            if append_mode:   # sem SetSpeed para encolher: a janela inteira poderia sobrepor vizinhos antigos
-                fim = max(ini + 1, min(fim, int(ini + math.ceil(rm['points'][-1][0]) * c['media_fps'] / tl_fps)))
+            if append_mode:   # redundante com dr_media, mantido por seguranca
+                fim = max(ini + 1, fim)
         else:
             ini, fim = c['src_in'], c['src_out']
             if append_mode and abs(c.get('speed', 100.0) - 100.0) > 1e-6:   # idem: entra ja com a duracao final
@@ -382,7 +497,8 @@ def build(spec, cleanup=True, log=print):
         rm = a.get('remap')
         if rm:
             pts = rm['points']; sa, sb = min(q[1] for q in pts), max(q[1] for q in pts)
-            ini, fim = max(0, int(math.floor(sa * a['media_fps']))), min(a['_total'] - 1, int(math.ceil(sb * a['media_fps']))) + 1
+            ini = max(0, int(math.floor(sa * a['media_fps'])))
+            fim = min(a['_total'], ini + max(1, int(round(math.ceil(pts[-1][0]) * a['media_fps'] / tl_fps))))
         else:
             ini, fim = a['src_in'], a['src_out']
         if append_mode and a.get('rec_dur'):   # sem SetSpeed: entra ja com a duracao final para nao sobrepor vizinhos

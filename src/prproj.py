@@ -10,12 +10,10 @@ Grafo (Premiere 27, medido em Teste PR.prproj):
   -> VideoClipTrack -> ClipItems -> TrackItem(ObjectRef) -> SubClip -> Clip(VideoClip)
   -> TimeRemapping -> Keyframes(TimeComponentParam "Speed")
   <Keyframes>t_ticks,v_seg_midia,tipo,0,infIn,velIn,infOut,velOut;...</Keyframes>   TPS = 254016000000
-  tipos vistos: 6 = ponta, 7 = suavizado com influencia %, 8 = juncao lisa.
-  influencia = fracao (%) do segmento ocupada pelo ease; as velocidades gravadas nao
-  decodificam como dv/dt em seg_midia/seg_seq (valores ~0 em pontos de rampa alta) —
-  por isso a tangente vem do PCHIP e a influencia so define o COMPRIMENTO da alca.
+  tipos vistos: 6 = ponta, 7 = inicio de rampa (com influencia %), 8 = fim de rampa.
+  A curva real esta descrita em _amostra (modelo medido contra render do Premiere).
 """
-import gzip, re
+import bisect, gzip, re
 
 TPS = 254016000000.0
 GUID_VIDEO = '228cda18-3625-4d2d-951e-348879e4ed93'    # MediaType das VideoClipTrack
@@ -121,73 +119,60 @@ class Prproj(object):
         return out
 
 
-def _pchip(xs, ys):
-    """tangentes de Hermite monotonico (Fritsch-Carlson): C1 e monotona — velocidade continua, sem reverso."""
-    n = len(xs)
-    h = [xs[i + 1] - xs[i] for i in range(n - 1)]
-    d = [(ys[i + 1] - ys[i]) / h[i] if h[i] else 0.0 for i in range(n - 1)]
-    m = [d[0]] + [(d[i - 1] + d[i]) / 2.0 for i in range(1, n - 1)] + [d[-1]]
-    for i in range(n - 1):
-        if d[i] == 0.0:
-            m[i] = m[i + 1] = 0.0
-        else:
-            a, b = m[i] / d[i], m[i + 1] / d[i]
-            s = a * a + b * b
-            if s > 9.0:
-                t = 3.0 / s ** 0.5
-                m[i], m[i + 1] = t * a * d[i], t * b * d[i]
-    return m
-
-
 def _amostra(knots, fps, t0, t1):
     """curva tempo-do-clipe -> tempo-midia amostrada a cada quadro da faixa do clipe (+ nos exatos).
     Os nos do TimeRemapping estao em tempo DO CLIPE (0 = inicio do take, nao da sequencia):
     a janela de avaliacao e [0, t1-t0] e o resultado sai em tempo ABSOLUTO da sequencia (+t0).
 
-    Cada segmento vira um Bezier cubico: direcao da tangente = PCHIP (monotona, sem overshoot)
-    e comprimento da alca = influencia% gravada pelo Premiere * duracao do segmento
-    (tipo 7 traz a %; tipo 8 e juncao lisa sem % gravada -> usa 1/3, o ease padrao;
-    ponta tipo 6 nao suaviza o lado de fora porque nao tem segmento alem)."""
+    Modelo MEDIDO contra render do Premiere (quadro a quadro, Cesmac 16/11): trecho comum = velocidade
+    constante (corda reta); par 7->8 = RAMPA entre as velocidades dos trechos vizinhos (por isso a
+    corda da rampa vale a media das duas). A velocidade da rampa e um Bezier em (tempo, velocidade)
+    com alcas horizontais de comprimento = influencia% do no 7, espelhada no no 8 (0% = rampa linear;
+    maior = S mais marcado). Influencia <= 50%: exato; acima disso sobrou desvio de ate ~3 quadros de midia."""
     xs = [k[0] for k in knots]; ys = [k[1] for k in knots]
     tipos = [k[2] for k in knots]
     iIn = [k[3] / 100.0 for k in knots]; iOut = [k[5] / 100.0 for k in knots]
-    m = _pchip(xs, ys) if len(xs) > 2 else [None] * len(xs)
-
-    def alca(no, lado):      # fracao do segmento que a alca ocupa saindo (lado=1) ou entrando (lado=0)
-        inf = iOut[no] if lado else iIn[no]
-        if inf > 1e-4: return min(inf, 1.0)
-        return 1.0 / 3.0 if tipos[no] in (7, 8) else 0.0
-
-    segs = []
-    for i in range(len(xs) - 1):
+    n = len(xs)
+    cord = [(ys[i + 1] - ys[i]) / (xs[i + 1] - xs[i]) if xs[i + 1] > xs[i] else 0.0 for i in range(n - 1)]
+    rampa = [tipos[i] == 7 and tipos[i + 1] == 8 and xs[i + 1] > xs[i] for i in range(n - 1)]
+    v0 = [cord[i - 1] if rampa[i] and i > 0 and not rampa[i - 1] else None for i in range(n - 1)]
+    v1 = [cord[i + 1] if rampa[i] and i + 2 < n and not rampa[i + 1] else None for i in range(n - 1)]
+    for ordem in (range(n - 1), range(n - 2, -1, -1)):       # rampas coladas: a velocidade passa de uma pra outra
+        for i in ordem:
+            if not rampa[i]: continue
+            if v0[i] is None and i > 0 and rampa[i - 1] and v1[i - 1] is not None: v0[i] = v1[i - 1]
+            if v1[i] is None and i + 2 < n and rampa[i + 1] and v0[i + 1] is not None: v1[i] = v0[i + 1]
+            if v0[i] is not None and v1[i] is None: v1[i] = max(0.0, 2 * cord[i] - v0[i])
+            if v1[i] is not None and v0[i] is None: v0[i] = max(0.0, 2 * cord[i] - v1[i])
+    N = 256
+    tab = {}
+    for i in range(n - 1):
+        if not rampa[i] or v0[i] is None: continue          # rampa sem vizinho nenhum: corda reta
         h = xs[i + 1] - xs[i]
-        if m[i] is None:      # 2 nos: linear puro
-            segs.append(('lin', ys[i], ys[i + 1] - ys[i], 0, 0))
-            continue
-        # alcas do Bezier na direcao da tangente PCHIP, comprimento = influencia do segmento
-        ho = alca(i, 1) * h; hi = alca(i + 1, 0) * h
-        if ho + hi > h:      # alcas nao podem se cruzar: encolhe proporcional ate x(u) continuar monotonico
-            f = h / (ho + hi); ho *= f; hi *= f
-        p1x = min(xs[i] + ho, xs[i + 1]); p1y = ys[i] + m[i] * (p1x - xs[i])
-        p2x = max(xs[i + 1] - hi, xs[i]); p2y = ys[i + 1] - m[i + 1] * (xs[i + 1] - p2x)
-        segs.append(('bez', xs[i], ys[i], p1x, p1y, p2x, p2y, xs[i + 1], ys[i + 1]))
+        a = min(iOut[i], 1.0) if iOut[i] > 1e-4 else 0.0
+        b = min(iIn[i + 1], 1.0) if iIn[i + 1] > 1e-4 else a
+        X = []; V = []
+        for j in range(N + 1):
+            u = j / N; w = 1 - u
+            X.append(xs[i] + h * (3 * w * w * u * a + 3 * w * u * u * (1 - b) + u ** 3))
+            V.append(v0[i] + (v1[i] - v0[i]) * (3 * w * u * u + u ** 3))
+        Y = [ys[i]]
+        for j in range(N):
+            Y.append(Y[-1] + (V[j] + V[j + 1]) / 2 * (X[j + 1] - X[j]))
+        res = ys[i + 1] - Y[-1]                             # fecha exatamente no no seguinte
+        tab[i] = (X, [y + res * (x - xs[i]) / h for x, y in zip(X, Y)])
 
     def eval_(t):
         if t <= xs[0]: return ys[0]
         if t >= xs[-1]: return ys[-1]
-        for i, sg in enumerate(segs):
+        for i in range(n - 1):
             if xs[i] <= t <= xs[i + 1]:
-                if sg[0] == 'lin':
-                    return ys[i] + sg[2] * (t - xs[i]) / (xs[i + 1] - xs[i])
-                _, x0, y0, p1x, p1y, p2x, p2y, x3, y3 = sg
-                lo, hi = 0.0, 1.0          # x(u) e monotonico (alcas dentro do segmento): biseccao
-                for _ in range(40):
-                    u = (lo + hi) / 2.0
-                    xu = (1 - u) ** 3 * x0 + 3 * (1 - u) ** 2 * u * p1x + 3 * (1 - u) * u * u * p2x + u ** 3 * x3
-                    if xu < t: lo = u
-                    else: hi = u
-                u = (lo + hi) / 2.0; w = 1 - u
-                return w ** 3 * y0 + 3 * w * w * u * p1y + 3 * w * u * u * p2y + u ** 3 * y3
+                if i not in tab:
+                    return ys[i] + cord[i] * (t - xs[i])
+                X, Y = tab[i]
+                j = min(max(bisect.bisect_right(X, t) - 1, 0), N - 1)
+                dx = X[j + 1] - X[j]
+                return Y[j] + (Y[j + 1] - Y[j]) * (t - X[j]) / dx if dx > 0 else Y[j]
         return ys[-1]
 
     dur = t1 - t0

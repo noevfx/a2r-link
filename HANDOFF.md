@@ -1,4 +1,126 @@
-# A2R Link (antes Noe Bridge) — HANDOFF (estado em 18/11/2026)
+# A2R Link (antes Noe Bridge) — HANDOFF (estado em 16/11/2026)
+
+## ESTADO 16/11 — incidente ExtendScript morto + fix blend mode + timemap em iteração
+
+### Incidente: ExtendScript morreu no Premiere 27.0.0 (RESOLVIDO — reinstalação)
+
+Sintoma: **todo** `evalScript` de qualquer painel CEP devolvia `"EvalScript error."` —
+inclusive `return 1` — num projeto novo vazio, após reboot e após reset de preferências.
+Os painéis renderizam a UI (CEF vivo) mas as funções do `host.jsx` (`nb_run`, `nb_resumo`,
+`prmcp_run`) ficam `undefined`. UXP (Premiere Toolkit) continua funcionando — **UXP não
+prova nada sobre o ExtendScript**, são mecanismos diferentes.
+
+Causa provada: **instalação corrompida do Premiere 27.0.0** — `extendscript.dll` carregava
+no processo mas o motor não executava. **Reinstalar o Premiere pelo Creative Cloud resolveu
+tudo** (`return 1` → `data:1`, `nb_run`/`nb_resumo`/`prmcp_run` vivos de novo).
+
+Descartado na investigação (não era): nenhum arquivo de extensão (morto com minhas
+extensões em quarentena), nenhum `.prproj`, nenhum modal aberto, PlayerDebugMode,
+preferências, crash dumps (os de `~/AppData/Local/CrashDumps` eram antigos), plugins.
+
+**Se voltar a acontecer**: testar `return 1` pela PR MCP Bridge (abaixo). Se falhar igual
+→ reinstalar o Premiere, não mexer em código. Se funcionar → o problema é a extensão
+(específica) — aí sim caçar no bundle.
+
+### Canal de diagnóstico (dev, só na máquina do Eduardo)
+
+- **PR MCP Bridge**: painel CEP que serve `POST 127.0.0.1:47300/run` com header
+  `x-prmcp-token` (token em `%APPDATA%\prmcp\token`). O `prmcp_run(code)` embrulha o
+  código em `(function(){...})()` — mandar corpo de função COM `return`. Responde JSON.
+  Perfeito para sondas ExtendScript sem abrir o ESTK: `return 1`, `return typeof nb_run`,
+  `return app.project.name`.
+- `NB_HOST_OK = "0.1.4"` no topo do `host.jsx` — sonda de 1 linha que prova se o JSX
+  carregou (`evalScript("NB_HOST_OK")`).
+- `nb_run` devolve `{success, data, error}` com `error` = mensagem + linha real do erro —
+  usar em vez de inferir de "EvalScript error.".
+- `main.js` do painel engole erro de `nb_resumo` silenciosamente → "reading..." travado
+  para sempre = funções ausentes = `host.jsx` não carregou OU motor morto.
+
+### Blend mode Premiere — CORRIGIDO E VERIFICADO (causa dos takes pretos)
+
+`premiere_read.jsx` lê `blendMode` via `getValue` do componente Opacity — **o valor NÃO é
+o índice do dropdown**: é o enum interno **1-based em ordem alfabética com Subtract/Divide
+por último** (Normal = 18, medido em clipes default — o `.prproj` nem serializa o campo
+quando default). A tabela antiga mapeava por posição de dropdown → 18 virava `HARD_MIX`
+(24) → `CompositeMode=24` no Resolve → vídeo **preto** em todos os takes.
+
+`normalizer._PR_BLEND` agora é a lista alfabética real + `_composite(..., off=1)`.
+Verificado: clipes com `blendMode=18` → `composite: None` → nada escrito → normal.
+
+### Speed ramp / timemap — refeito em 16/11 (manhã) com MEDIÇÃO real; sem aceite do usuário ainda
+
+**Fatos medidos (não reabrir sem medir de novo):**
+
+1. **O ease do Resolve NÃO é Bézier livre.** Teste: 5 nós do AE com alças na tangente real (fora da
+   corda) → o Resolve renderiza (não fica preto), mas **ignora a direção da alça**: anda pela corda
+   reta entre os nós e só arredonda o canto (medido: 60 quadros de erro contra o AE). Logo "mesmos nós
+   da origem com a mesma curva" **não existe** no formato do Resolve quando a origem é Bézier livre.
+2. **`drtlib.timemap_eval` é o modelo certo**: colado no Resolve e medido quadro a quadro
+   (`ExportCurrentFrameAsStill` + casamento com a mídia) → 113/121 exatos, resto a 1 quadro.
+3. **Rampa do Premiere (modelo medido contra render do Premiere, 359 quadros)**: trecho comum =
+   velocidade constante; par de nós tipo 7→8 = rampa entre as velocidades vizinhas (a corda da rampa
+   vale a média das duas). A velocidade na rampa é um Bézier em (tempo, velocidade) com alças
+   horizontais = influência% do nó 7, espelhada no 8. Influência 46,5% → exato. Influência 59,5% →
+   sobra até 4 quadros de mídia (bate melhor com 66%; regra acima de 50% **não decifrada**).
+   O amostrador antigo (PCHIP por todos os nós) errava até **56 quadros de mídia** — era a causa do
+   "não bate frame a frame". Corrigido em `prproj._amostra`.
+
+**Algoritmo novo (`gen._timemap_mapa`)** — "polígono das tangentes": os nós da origem marcam onde a
+curva é tocada; cada nó do Resolve fica no cruzamento de duas tangentes vizinhas e a alça cobre o
+trecho entre os dois toques (alça sempre recalculada em cima da corda real). Toque extra só onde o
+desvio contra a verdade (`remap['dense']`, amostra por quadro sem simplificar — campo novo do spec)
+passa de `TOL` (1.0 quadro de mídia × velocidade local, até 8×). Uma rampa do Premiere com S parecido
+com o do Resolve dá **1 nó**; S mais suave que o canto do Resolve precisa de toques extras.
+
+**Modo padrão = "quantidade igual" (`gen.RAMPA_NOS_EXTRAS = False`, pedido do Eduardo):**
+- Premiere: só os nós da origem → Cesmac 30s = 4 nós (início, 1 por rampa, fim). **Aceito pelo Eduardo**
+  ("exato, quase exato", testado em 2 takes). Contra o render: máx. 10 quadros de mídia na subida.
+- AE (Bézier livre, a curva "vira" entre dois nós → tangentes dos nós não se cruzam): os toques saem
+  da própria curva (pico/vale de velocidade primeiro, depois o ponto de maior erro) até o teto =
+  quantidade de nós da origem; depois busca local acerta a posição de cada toque (erro médio em
+  quadros de mídia). Cesmac 15s: 5 nós, pico 27× (real 33×), máx. 8 quadros de mídia contra o AE —
+  **medido no Resolve** (118/121 quadros iguais ao previsto). Aguardando o olho do Eduardo.
+- `RAMPA_NOS_EXTRAS = True` volta ao refino por tolerância (`TOL`=1.0 quadro de mídia × velocidade
+  local): Premiere 10 nós / máx. 3; AE ~17 nós / máx. 4,5.
+
+**Chaves no painel (16/11):** o menu de destino virou chave liga/desliga e ganhou uma segunda, "Rampa".
+Ligada (azul, à direita) = `Nova timeline` / `Editável`; desligada = `Mesmo nome` / `Precisa`. A escolha
+fica em `localStorage` e viaja no clipboard (`data.destino`, `data.rampa` → `spec['rampa']`). `precisa`:
+`gen.build` tira os `nodes` do remap e usa `dense` como `points` → timemap de um ponto por quadro (no AE,
+desvio 0 contra a amostra). Testes: `window.A2R_CHAVES.{destino,rampa}.poe(bool)`; `A2R_RAMPA=precisa` no
+`test_painel.js`. **Não testado ainda**: clique real no painel dentro do Premiere/AE e colagem "Precisa"
+no Resolve. Painel instalado (CEP) já recebeu cópia de `index.html` e `js/main.js`.
+
+**Aberto:** (a) regra da influência > 50% no Premiere — precisa de um teste controlado (mesma rampa
+com 3 alças diferentes + render); (b) timelines de sonda no projeto de teste: `_probe_A_tangentes` (1, 2 e 3) e
+`_probe_B_bezier` (+ sub-bins) — apagar à mão. Scripts de medição em `%TEMP%\a2r_rampa\`
+(`mede.py` = verdade do render do Premiere; `probe.py` = cola o clipboard do AE e mede no Resolve).
+
+### Pendências conhecidas
+
+- **Timeline nasce 25 fps** quando a fonte é 29,97/23,976/etc. `SetSetting('timelineFrameRate')`
+  pós-criação retorna False; `CreateEmptyTimeline` com settings também ignorou. Hipótese:
+  o DRT importado precisa carregar o fps — não resolvido, desloca a rampa inteira.
+- Timelines de teste quebradas no Resolve (`... 29,97p 2/3/4`, `_test_*`) — limpeza manual.
+- **Não tocar em Retime Controls** no Resolve UI — achata o timemap importado (provado).
+- Flag `0x08` do blob — semântica desconhecida, inerte, não usar.
+- Lumetri Color — fora de escopo (aviso).
+- Params de transição — API não expõe, documentado.
+- Mac — não testável aqui.
+
+### Regras do Eduardo (não esquecer)
+
+- PT-BR, direto. Sem commit/push sem "pode subir pro git". Sem apagar/sobrescrever sem
+  confirmar. Sem menções a concorrentes no código/docs.
+- Produto pra usuário final: **nada de dependência de MCP/agente** no fluxo do painel —
+  o painel copia via `evalScript` da própria extensão (`nb_run`), a ponte 47300 é só dev.
+- Ele testa visual no Resolve — "fiel" = curva parecida com AE/Premiere E timing medido,
+  não só números. Comparar: chaves da origem ↔ amostras ↔ DRT gerado ↔ decode do Resolve
+  ↔ render.
+
+---
+
+## ESTADO — rodada "gaps reais" (blend modes, fx animados, px_blur, audio FX, máscaras)
 
 ## ESTADO — rodada "gaps reais" (blend modes, fx animados, px_blur, audio FX, máscaras)
 

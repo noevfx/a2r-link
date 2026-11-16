@@ -648,11 +648,13 @@ _BLEND = {'NORMAL': 0, 'ADD': 1, 'SUBTRACT': 2, 'DIFFERENCE': 3, 'MULTIPLY': 4, 
           'COLOR': 16, 'DIVIDE': 18, 'LINEAR_DODGE': 19, 'LINEAR_BURN': 20,
           'LINEAR_LIGHT': 21, 'VIVID_LIGHT': 22, 'PIN_LIGHT': 23, 'HARD_MIX': 24,
           'LIGHTER_COLOR': 25, 'DARKER_COLOR': 26, 'LUMINOSITY': 30}
-# Premiere 'Blend Mode' (enum do componente Opacity): indice = posicao no dropdown
-_PR_BLEND = ['NORMAL', 'DISSOLVE', 'DARKEN', 'MULTIPLY', 'COLOR_BURN', 'LINEAR_BURN', 'DARKER_COLOR',
-             'LIGHTEN', 'SCREEN', 'COLOR_DODGE', 'LINEAR_DODGE', 'LIGHTER_COLOR', 'OVERLAY',
-             'SOFT_LIGHT', 'HARD_LIGHT', 'VIVID_LIGHT', 'LINEAR_LIGHT', 'PIN_LIGHT', 'HARD_MIX',
-             'DIFFERENCE', 'EXCLUSION', 'SUBTRACT', 'DIVIDE', 'HUE', 'SATURATION', 'COLOR', 'LUMINOSITY']
+# Premiere 'Blend Mode' (Opacity.getValue): enum interno 1-based ALFABETICO, Subtract/Divide no fim
+# (nao e o indice do dropdown! Normal=18 medido em clips default) — verificado PR 25.x
+_PR_BLEND = ['COLOR_BURN', 'COLOR_DODGE', 'DARKEN', 'DARKER_COLOR', 'DIFFERENCE', 'DISSOLVE',
+             'EXCLUSION', 'HARD_LIGHT', 'HARD_MIX', 'HUE', 'LIGHTEN', 'LIGHTER_COLOR',
+             'LINEAR_BURN', 'LINEAR_DODGE', 'LINEAR_LIGHT', 'LUMINOSITY', 'MULTIPLY', 'NORMAL',
+             'OVERLAY', 'PIN_LIGHT', 'SATURATION', 'SCREEN', 'SOFT_LIGHT', 'VIVID_LIGHT',
+             'SUBTRACT', 'DIVIDE']
 # AE BlendingMode: enum = 5212+indice (DANCING_DISSOLVE ocupa o slot 2); >= 28 sao modos de matte
 _AE_BLEND_OFF = 5212
 _AE_BLEND = ['NORMAL', 'DISSOLVE', 'DANCING_DISSOLVE', 'DARKEN', 'MULTIPLY', 'COLOR_BURN', 'LINEAR_BURN',
@@ -788,13 +790,13 @@ def ae_to_spec(data, rW, rH, rfps, name=None):
             speed, s = 100.0, 1.0
         elif L.get('timeRemap') and L.get('remap'):
             # curva real tempo-da-comp -> tempo-da-midia (amostrada); reduz com tolerancia de 0.2 quadro de midia
-            pts = [[(t - r0) * rfps, v] for t, v in L['remap']]
-            pts = _rdp(pts, 0.2 / mfps)
+            dens = [[(t - r0) * rfps, v] for t, v in L['remap']]
+            pts = _rdp(dens, 0.2 / mfps)
             if any(b[1] < a[1] - 1e-6 for a, b in zip(pts, pts[1:])):
                 avisos.append(T('camada "%s": Time Remap com trecho em reverso: reverso ainda nao suportado, ignorado',
                                 'layer "%s": Time Remap with a reversed stretch: reverse not supported yet, skipped') % nm); continue
             if len(pts) < 2: pts = [pts[0], [pts[0][0] + 1, pts[0][1]]]
-            remap = {'points': pts}
+            remap = {'points': pts, 'dense': dens}
             if L.get('remapKeys'):   # nos do Time Remap com ease temporal -> timemap "eased" nativo (rampa editavel)
                 remap['nodes'] = [[(k['t'] - r0) * rfps, k['v'], k['iI'], k['iO']] for k in L['remapKeys']]
             speed, s = 100.0, 1.0
@@ -868,6 +870,7 @@ def ae_to_spec(data, rW, rH, rfps, name=None):
     return {'version': 1, 'name': name or comp['name'], 'bin': _nome_projeto(data.get('project'), 'After Effects (sem projeto)'),
             'fps': comp['fps'], 'width': comp['width'], 'height': comp['height'],
             **({'destino': data['destino']} if data.get('destino') else {}),
+            **({'rampa': data['rampa']} if data.get('rampa') else {}),
             **({'markers': markers} if markers else {}),
             **({'ajustes': ajustes} if ajustes else {}),
             'clips': clips, 'audio_clips': audio_clips}, avisos
@@ -971,12 +974,13 @@ def premiere_to_spec(data, rW, rH, rfps, name=None):
                 avisos.append(T('clipe "%s": reverso + Time Remapping — a rampa nao entra junto com o reverso',
                                 'clip "%s": reverse + Time Remapping — the ramp is not carried with the reverse') % nm)
         elif c.get('remap'):      # speed ramp lido do .prproj pelo bridge: mesma rota do Time Remap do AE
-            pts = _rdp([[(t - c['start']) * rfps, v] for t, v in c['remap']], 0.2 / mfps)
+            dens = [[(t - c['start']) * rfps, v] for t, v in c['remap']]
+            pts = _rdp(dens, 0.2 / mfps)
             if any(b[1] < a[1] - 1e-6 for a, b in zip(pts, pts[1:])):
                 avisos.append(T('clipe "%s": speed ramp com trecho em reverso: ainda nao suportado, ignorado',
                                 'clip "%s": speed ramp with a reversed stretch: not supported yet, skipped') % nm); continue
             if len(pts) < 2: pts = [pts[0], [pts[0][0] + 1, pts[0][1]]]
-            remap = {'points': pts}
+            remap = {'points': pts, 'dense': dens}
             rn = c.get('remap_nodes')
             if rn and rn.get('knots'):   # nos do TimeRemapping com influencia -> timemap "eased" nativo (rampa editavel)
                 ab = bool(rn.get('absoluto'))
@@ -1080,7 +1084,7 @@ def premiere_to_spec(data, rW, rH, rfps, name=None):
                       **({'markers': mks} if mks else {}),
                       **({'_m_curve': m_curve} if m_curve else {}),
                       **({'fx': fxc} if fxc else {}),
-                      **({'composite': _cp} if (_cp := _composite(c.get('blendMode'), _PR_BLEND, 0, 'clipe', nm, avisos)) else {}),
+                      **({'composite': _cp} if (_cp := _composite(c.get('blendMode'), _PR_BLEND, 1, 'clipe', nm, avisos)) else {}),
                       **({'cor': _cor_rgb(c['label_rgb'])} if c.get('label_rgb') is not None else {})})
     audio_clips = []
     for a in data.get('audio') or []:
@@ -1233,6 +1237,7 @@ def premiere_to_spec(data, rW, rH, rfps, name=None):
     return {'version': 1, 'name': name or seq['name'], 'bin': _nome_projeto(seq.get('project'), 'Premiere (sem projeto)'),
             'fps': sfps, 'width': sW, 'height': sH,
             **({'destino': data['destino']} if data.get('destino') else {}),
+            **({'rampa': data['rampa']} if data.get('rampa') else {}),
             **({'transitions': transitions} if transitions else {}),
             **({'titulos': titulos} if titulos else {}),
             **({'ajustes': ajustes} if ajustes else {}),
