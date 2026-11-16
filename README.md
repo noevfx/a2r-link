@@ -8,9 +8,11 @@
 
 ### Por que ele é diferente
 
-- **Curvas Bézier chegam vivas** — a rampa de velocidade e o Motion não são "achatados": as alças aparecem no Inspector do Resolve e você continua editando. Nenhuma ponte gratuita entrega isso.
+- **Keyframes chegam vivos** — Position/Scale/Rotation/Opacity não são "achatados": as alças Bézier aparecem no Inspector do Resolve e você continua editando. A speed ramp vai com **os mesmos nós da origem** (modo Editável, padrão) ou **quadro a quadro** (modo Precisa) — chave no painel. Rampa do Premiere sai mesmo sem API pra isso (lida do `.prproj`). Nenhuma ponte gratuita entrega isso.
 - **Feito pra revisão de edição** — mande de novo só os takes alterados: o A2R substitui cada um na mesma posição e trilha, sem ripple. A timeline do Resolve vira um espelho da sua edição no Premiere/AE.
 - **Transições e efeitos de verdade** — ~66 transições saem como tipos reais do Resolve (wipe é wipe, não dissolve disfarçado), ~60 efeitos viram Resolve FX nativos no Inspector e ~40 efeitos de áudio viram Fairlight FX. Param animado vira Fusion comp com chaves.
+- **A timeline nasce igual à origem** — resolução e fps certos no primeiro envio: o vertical 1080×1920 de reels sai vertical, 29.97 sai 29.97.
+- **O que está por dentro vai junto** — nested sequences e precomps são expandidas recursivamente (herdando speed, rampa e markers); títulos viram Text+ posicionados; markers chegam coloridos; o áudio linkado segue o mesmo retime do vídeo.
 - **Honesto por construção** — o que não tem equivalente fica fora com aviso nomeado, nunca um dissolve falso ou um drop silencioso.
 - **Gratuito e aberto** — código-fonte aqui, um instalador e auto-update com um clique dentro do próprio painel.
 
@@ -40,10 +42,11 @@ Para remover: `DESINSTALAR.bat` / `DESINSTALAR.command`.
 
 O projeto já foi pro Resolve e o cliente pediu alteração? Você troca os takes no Premiere/After, seleciona **só os takes novos** e manda de novo. O A2R acha a timeline de mesmo nome, **substitui só os takes que mudaram na mesma posição e trilha** e deixa todo o resto intacto — corte a corte, sem ripple, sem duplicar nada. A timeline do Resolve vira um espelho vivo da edição: cada ida e volta atualiza só o que mudou.
 
-**Destino do paste** (seletor no painel):
+**Chaves do painel**:
 
-- **Nova timeline** — cria `Nome da sequência` com resolução e fps da origem.
-- **Timeline de mesmo nome** — adiciona/substitui takes na timeline que já existe com esse nome, mantendo posição e trilha originais; os demais takes ficam intactos (sem ripple). É o modo das revisões: manda de novo só o que mudou.
+- **Destino › Nova timeline** — cria `Nome da sequência` com resolução e fps da origem. **Mesmo nome** — adiciona/substitui takes na timeline que já existe com esse nome, mantendo posição e trilha originais; os demais takes ficam intactos (sem ripple). É o modo das revisões: manda de novo só o que mudou.
+- **Rampa › Editável** (padrão) — a rampa chega com a **mesma quantidade de nós da origem** e com alças: no Premiere são os próprios keyframes de velocidade; no After, os nós são realocados na curva para segurar a rajada. Fica leve de mexer no Resolve, com fidelidade quase exata.
+- **Rampa › Precisa** — um ponto por quadro, sem alças: segue a curva original frame a frame, pra quando a rampa tem que bater exatamente.
 
 **Auto-update**: o painel verifica releases novas no GitHub ao abrir (e a cada 6h). Quando sai versão nova, aparece um cartão — **um clique baixa e instala**; depois é só reabrir o programa.
 
@@ -57,8 +60,8 @@ O projeto já foi pro Resolve e o cliente pediu alteração? Você troca os take
 | Anchor Point, Position, Scale, Rotation, Opacity | ✅ estáticos e animados — **curvas Bézier chegam corretas e editáveis** (alças no Inspector do Resolve, não assadas) |
 | Flip H/V, escala não uniforme | ✅ |
 | Velocidade constante, clipe aparado | ✅ |
-| Speed ramp do After Effects | ✅ timemap real — as **curvas Bézier da rampa chegam corretas e editáveis** no Resolve (alças no Inspector de retime, não assadas) |
-| Speed ramp / Time Remap do Premiere | ✅ lido do `.prproj` (o DOM não expõe) — mesma curva Bézier editável no Resolve |
+| Speed ramp do After Effects | ✅ timemap real — Editável: mesma contagem de nós do AE (aproximada; o ease do Resolve arredonda cantos, não é Bézier livre — rajada preservada). Precisa: quadro a quadro |
+| Speed ramp / Time Remap do Premiere | ✅ lido do `.prproj` (o DOM não expõe) — Editável nos keyframes de velocidade (quase exato); Precisa quadro a quadro |
 | Reverso | ✅ timemap descendente |
 | Freeze frame | ✅ Frame Hold / Insert Frame Hold do PR, `timeStretch=0` do AE |
 | Blend modes | ✅ Screen/Multiply/Overlay/Soft Light etc. → `CompositeMode` (modos sem equivalente → aviso) |
@@ -126,4 +129,4 @@ Ver [CHANGELOG.md](CHANGELOG.md) — o estado detalhado de desenvolvimento fica 
 
 ### English (summary)
 
-**A2R Link** sends the whole timeline or just the selected takes from Adobe Premiere Pro / After Effects straight into a DaVinci Resolve Studio timeline — no XML, no AAF. Re-sending updated takes replaces only what changed, in the same position and track — built for edit revisions. Position, tracks, Motion/Inspector keyframes (with real easing), speed, reverse, freeze frames, blend modes, ~66 transitions (real Resolve types incl. Fusion transitions), video/audio fades, ~60 video effects (native Resolve FX, incl. animated params via Fusion comps), ~40 Fairlight audio effects, titles, adjustment layers, nested content and markers — all with per-feature warnings instead of silent drops. Windows tested; macOS installer included (unverified). Panels check GitHub Releases and self-update with one click.
+**A2R Link** sends the whole timeline or just the selected takes from Adobe Premiere Pro / After Effects straight into a DaVinci Resolve Studio timeline — no XML, no AAF. Re-sending updated takes replaces only what changed, in the same position and track — built for edit revisions. New timelines inherit the source resolution/fps (vertical reels stay vertical). Position, tracks, Motion/Inspector keyframes (real Bézier easing — editable, not flattened), speed ramps (same node count as the source, or frame-accurate — panel switch; Premiere ramps read from the `.prproj` the DOM can't see), reverse, freeze frames, blend modes, ~66 transitions (real Resolve types incl. Fusion transitions), video/audio fades, ~60 video effects (native Resolve FX, incl. animated params via Fusion comps), ~40 Fairlight audio effects, titles, adjustment layers, nested content and markers — all with per-feature warnings instead of silent drops. Windows tested; macOS installer included (unverified). Panels check GitHub Releases and self-update with one click.

@@ -36,8 +36,8 @@ Sem XML/AAF/EDL de intercâmbio, sem Fusion, sem compound clip — tudo via API 
 | In/out do clipe | ✅ | Janela de mídia exata |
 | Posição/trilha | ✅ | |
 | Velocidade constante | ✅ | Qualquer % (ex.: 526%) via `MediaTimemapBA` sem ripple |
-| **Speed ramp com ease (Bézier)** | ✅ | Nós eased nativos (`mode=2`), alças reais, editáveis no Resolve; validado no olho |
-| Fidelidade da rampa | ✅ | Refino automático: nó eased onde fiel + pontos auxiliares onde a curva diverge (desvio ≤0,5 quadro) |
+| **Speed ramp com ease** | ✅ | Nós eased nativos (`mode=2`) com alças, editáveis no Resolve — **modo Editável: mesma contagem de nós da origem** (PR: keyframes de velocidade, quase exato contra render; AE: nós realocados nos pontos de virada, rajada preservada). **Modo Precisa**: ponto por quadro, sem alças |
+| Fidelidade da rampa | ✅ | Editável: PR quase exato / AE até ~8 q de mídia na rajada (o ease do Resolve arredonda cantos — não é Bézier livre). Precisa: fiel à curva lida (AE desvio 0 na amostra; PR descida com alça >50% pode desviar ~4 q — regra não decifrada) |
 | Position / Scale / Rotation / Opacity | ✅ | Estático e **animado** (keyframes → curva `f10`) |
 | Ease em keyframes de transform | 🗺️ | Hoje sai amostragem densa (valor certo, forma densa); formato de ease do `f10` ainda não decifrado — falta exemplo real |
 | Anchor Point estático | ✅ | |
@@ -134,7 +134,7 @@ Regras:
 ## 8. Limitações conhecidas
 
 - **UI de retime do Resolve achata o ease**: clicar/editar na barra "Speed Change" do clipe destrói as alças (comportamento do Resolve). Re-export/roundtrip DRT preserva.
-- **Ease de rampa é aproximação**: tangente = corda do segmento vizinho + refino por divergência. Fiel na prática (≤0,5q), não bit-a-bit.
+- **Ease de rampa é aproximação**: o modelo do Resolve é canto arredondado (alças arredondam a junção das retas, não são tangentes Bézier da origem). Modo Editável aproxima pela mesma contagem de nós; quem precisa bit-a-bit usa o modo Precisa (denso, sem alças).
 - **Keyframes de Inspector saem densos** (1 ponto/quadro) — valor certo, edição menos limpa.
 - **API não persiste timeline até salvar o projeto** — timelines criadas por script somem se o Resolve recarregar sem salvar.
 
