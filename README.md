@@ -12,7 +12,7 @@
 - **Feito pra revisão de edição** — o cliente pediu alteração? Você ajusta no Premiere/After, seleciona só os clipes novos e manda de novo: cada um volta pro mesmo lugar, na mesma trilha, sem empurrar nada em volta. A timeline do Resolve vira um espelho da sua edição.
 - **Transições e efeitos de verdade** — ~66 transições chegam como a transição real do Resolve (wipe é wipe, não dissolve disfarçado), ~60 efeitos de vídeo viram efeitos do próprio Resolve e ~40 efeitos de áudio viram efeitos do Fairlight. Animação de efeito vira uma comp do Fusion que você pode abrir e mexer.
 - **A timeline nasce igual à origem** — se é vertical de reels, sai vertical; se é 29.97, sai 29.97. Sem configurar nada.
-- **O que está por dentro vai junto** — sequência dentro de sequência e precomp vêm abertas, com velocidade, rampa e markers delas; títulos viram textos do Resolve no lugar certo; markers chegam coloridos; o áudio grudado no clipe acompanha a mesma velocidade.
+- **O que está por dentro vai junto** — nested e precomp vêm abertas, com velocidade, rampa e markers delas; títulos viram textos do Resolve no lugar certo; markers chegam coloridos; o áudio grudado no clipe acompanha a mesma velocidade.
 - **Honesto** — se algo não tem como ir, o A2R avisa pelo nome em vez de fingir que foi.
 - **Gratuito e aberto** — o código está aqui, instala com um instalador e se atualiza com um clique dentro do próprio painel.
 
@@ -72,7 +72,7 @@ O projeto já foi pro Resolve e o cliente pediu alteração? Você troca os clip
 | Animou um parâmetro de efeito | ✅ vira uma comp do Fusion com as curvas |
 | Fez texto/gráfico no Premiere | ✅ texto do Resolve no lugar certo (se o movimento for animado, sai fixo + aviso) |
 | Pôs adjustment layer | ✅ Adjustment Clip do Resolve, na posição certa |
-| Usou sequência aninhada ou precomp | ✅ o conteúdo de dentro aparece na timeline — com velocidade, rampa e markers |
+| Usou nested ou precomp | ✅ o conteúdo de dentro aparece na timeline — com velocidade, rampa e markers |
 | Marcou com markers | ✅ chegam com as cores |
 | Deu cor (label) ao clipe | ✅ mesma cor no Resolve |
 | Editou vertical ou em fps quebrado (reels, 29.97...) | ✅ a timeline nova nasce com a resolução e o fps da origem |
