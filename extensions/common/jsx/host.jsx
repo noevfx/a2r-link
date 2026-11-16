@@ -1,7 +1,7 @@
 // A2R Link - host ExtendScript (Premiere e After). Carregado uma vez pelo CEP; as funcoes sao chamadas sob demanda pelo painel.
 //  nb_run(code)  : roda o corpo de um leitor (src/readers/*.jsx) com `return` e devolve JSON {success, data, error}
 //  nb_resumo()   : resumo leve da selecao para o painel (chamado a cada ~2 s)
-var NB_HOST_OK = "0.1.4";   // sonda: se o painel quebrar, evalScript("NB_HOST_OK") prova se este arquivo carregou
+var NB_HOST_OK = "0.1.5";   // sonda: se o painel quebrar, evalScript("NB_HOST_OK") prova se este arquivo carregou
 
 function mkTime(s) { var t = new Time(); t.seconds = s; return t; }   // o leitor do Premiere usa este helper
 

@@ -280,14 +280,27 @@ def self_update():
     with tempfile.TemporaryDirectory() as td:
         zipfile.ZipFile(io.BytesIO(buf)).extractall(td)
         raiz = next((os.path.join(td, d) for d in os.listdir(td) if os.path.isdir(os.path.join(td, d))), td)
+        if not os.path.isfile(os.path.join(raiz, 'install.py')):      # pacote com uma pasta por sistema (Windows/ e Mac/)
+            raiz = os.path.join(raiz, 'Mac' if sys.platform == 'darwin' else 'Windows')
         if not os.path.isfile(os.path.join(raiz, 'install.py')):
             raise RuntimeError(T('o pacote baixado nao tem install.py — atualizacao cancelada',
                                  'downloaded package has no install.py — update cancelled'))
-        if os.path.normcase(os.path.abspath(raiz)) != os.path.normcase(os.path.abspath(destino)):
-            if os.path.isdir(destino):
-                shutil.rmtree(destino)
-            os.makedirs(os.path.dirname(destino), exist_ok=True)
-            shutil.copytree(raiz, destino)
+        # copia completa ao lado e so entao troca: se algo falhar no meio, a versao instalada continua inteira
+        novo, velho = destino + '.novo', destino + '.antigo'
+        for sobra in (novo, velho):
+            shutil.rmtree(sobra, ignore_errors=True)
+        os.makedirs(os.path.dirname(destino), exist_ok=True)
+        shutil.copytree(raiz, novo)
+        os.chdir(os.path.dirname(destino))      # o painel nos inicia DENTRO da pasta instalada; no Windows ela nao sai enquanto for a pasta atual
+        if os.path.isdir(destino):
+            os.rename(destino, velho)
+        try:
+            os.rename(novo, destino)
+        except OSError:
+            if os.path.isdir(velho) and not os.path.isdir(destino):
+                os.rename(velho, destino)       # devolve a versao que estava
+            raise
+        shutil.rmtree(velho, ignore_errors=True)
     print(T('instalando...', 'installing...'), flush=True)
     r = subprocess.run([sys.executable, os.path.join(destino, 'install.py')],
                        capture_output=True, text=True, cwd=destino)

@@ -401,6 +401,19 @@ Flag `0x0d` numa key → a key consome **3 registros companions** logo após ela
 2. Conferência visual da curva eased no Resolve (stills) — a prova numérica já fechou; opcional.
 
 
+## RELEASE 0.1.5 (16/11/2026) — rampa sob controle, chaves no painel, updater robusto
+**Publicada nesta data** (tag `v0.1.5`, zip flat `A2R-Link_0.1.5.zip`):
+- **Modelo da rampa do Premiere refeito** (`prproj.py`): a curva lida do `.prproj` passa a ser velocidades constantes com transição (medido contra render exportado; a suavização antiga errava até ~56 q de mídia). Subida exata; descida com alça >50% pode desviar até ~4 q — regra não decifrada, falta teste controlado.
+- **Dois modos de rampa** (chave no painel): **Editável** = mesma contagem de nós da origem com alças (PR: aprovado "quase exato"; AE: nós realocados nos pontos de virada da curva — pico ~27x vs ~33x real, até ~8 q de mídia; limitação do modelo de cantos do Resolve). **Precisa** = ponto por quadro, sem alças (AE: desvio zero na amostra, ~122 pts).
+- **Chaves toggle no painel** (`index.html` + `main.js`): Destino "Mesmo nome"/"Nova timeline" (substituiu `selDestino`) e Rampa "Precisa"/"Editável"; estado persistido e travado durante envio. `RAMPA_NOS_EXTRAS` em `gen.py` guarda o modo antigo com refinamento adaptativo.
+- **Takes pretas corrigidas**: `blendMode=18` do Premiere é `Normal` (enum interno alfabético 1-based, NÃO a posição no dropdown); `_PR_BLEND` em `normalizer.py` refeita — `Normal` não escreve CompositeMode (antes virava `HARD_MIX`).
+- **Auto-update robusto** (`bridge.self_update`): acha `install.py` também em pacote com pastas `Windows/`/`Mac/`; troca a pasta instalada por staging (`A2R Link.novo` → rename) com rollback — o painel roda o bridge com cwd DENTRO da pasta instalada e o `rmtree` antigo apagava a instalação até falhar no Windows (WinError 32). `os.chdir` sai da pasta antes do rename.
+- **Pacote da release virou flat** (`build_release.py`): pasta-raiz única `A2R Link X.Y.Z/` com `install.py` na raiz + instaladores/LEIA-MEs dos dois sistemas — é o formato que o updater da 0.1.4 instala sozinho (ele entra na 1ª pasta do zip e exige `install.py` ali). NÃO voltar ao layout `Windows/`+`Mac/` sem mudar o updater antigo (quebra a autoatualização dos instalados).
+- **Sonda `NB_HOST_OK`** em `host.jsx` = versão carregada (`"0.1.5"`): `evalScript("NB_HOST_OK")` distingue motor ExtendScript morto de extensão quebrada (o incidente do Premiere 27.0.0: TODO evalScript retornava "EvalScript error." → reinstalar o Premiere resolveu; o painel fica em "reading..." pra sempre quando `nb_resumo` não existe).
+- `_backups/v0.1.4` criado por `git archive ff06480` (estado do zip publicado).
+- **gen.py**: varredura da rampa com passo mínimo `(fim-rec0)/2000` — take longo não custa mais minutos.
+- **Sem validação real pendente**: clique das chaves dentro do Premiere/AE e paste "Precisa" no Resolve já foram OK para o Eduardo; resta rampa PR com alça >50% controlada, Mac em hardware, 25 fps vs 29.97.
+
 ## ESTADO 0.1.4 (17/11/2026) — destino da timeline + config nativa da origem
 **Feito e verificado nesta rodada** (DaVinci aberto, paste real AE e Premiere):
 - **Timeline nova herda EXATAMENTE a origem** (bug do usuário: seq/comp 1080x1920 caía numa timeline 4K aberta). O `spec` agora carrega `fps/width/height` da sequência/comp (`normalizer`); `bridge.paste` usa a origem como referência de escala (não mais a timeline aberta); `gen.build` aplica na temporária `SetSetting('useCustomSettings','1')` + `timelineResolutionWidth/Height` + `timelineFrameRate` ANTES dos appends. Provado: comp AE 1080x1920@29.97 → timeline "…Vertical 3" 1080x1920@29.97.

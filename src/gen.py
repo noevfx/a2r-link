@@ -225,7 +225,7 @@ def _timemap_mapa(rm, rec0, fe, tot, mfps, uid):
         return out, ruins
 
     TOL = 1.0                                             # tolerancia em quadros de midia (x velocidade local, ver tol_t)
-    passo = q / 4
+    passo = max(q / 4, (fim - rec0) / 2000)               # take longo: a varredura nao pode custar minutos
 
     def tol_t(tt):                                        # adaptativa: quadro de midia errado e invisivel numa rajada
         sl_ = abs(ref(tt + q) - ref(tt - q)) / (2 * q) if tt - q > rec0 else 1.0     # (imagem a 30x+), mas conta em trecho parado

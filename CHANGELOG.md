@@ -2,7 +2,20 @@
 
 Versões em SemVer, em português. Release publicada é imutável: correção vira novo PATCH.
 
-## Não lançado
+## 0.1.5 — 16/11/2026
+
+**Novo (rampa sob controle + chaves no painel)**
+- **Rampa com a quantidade de nós da origem** (chave "Rampa" no painel, ligada por padrão): Premiere → os keyframes de velocidade viram nós com alça (verificado contra render exportado — quase exato); After → mesma contagem de keyframes, com os nós realocados nos pontos de virada da curva (rajada preservada, aproximação por causa do modelo de cantos do Resolve).
+- **Modo "Precisa"**: a alternativa da chave manda um ponto por quadro, sem alças — fiel à curva lida (AE: desvio zero na amostra). No Premiere vale o limite da leitura do `.prproj` (descida com alça >50% pode desviar até ~4 q de mídia).
+- **Chave de destino** ("Mesmo nome" / "Nova timeline") substitui o menu antigo; as duas chaves lembram a última escolha e travam durante o envio.
+- **Modelo da rampa do Premiere refeito**: velocidades constantes com transição entre elas (a leitura anterior suavizava e errava até ~56 quadros de mídia no teste Cesmac).
+
+**Correção**
+- **Takes pretas**: `blendMode=18` do Premiere (Normal — o enum interno é alfabético 1-based) era lido como `HARD_MIX`. Tabela `_PR_BLEND` corrigida; `Normal` não escreve mais CompositeMode.
+- **Auto-update**: o zip com pastas `Windows/`/`Mac/` quebrava a detecção da raiz ("pacote sem install.py"); e a pasta instalada em uso (o painel roda o bridge de dentro dela) fazia o Windows apagar a instalação no meio. Agora o updater acha o `install.py` também em pasta de sistema e troca a pasta por **staging + rename** com rollback. O pacote a partir desta versão tem pasta-raiz única — atualizadores antigos instalam direto.
+- Sonda `NB_HOST_OK` no `host.jsx` marca a versão carregada (diagnóstico "motor vs extensão").
+- Varredura de rampa com passo mínimo — take longo não custa mais minutos.
+
 
 **Novo (auto-update + marca)**
 - **Atualização automática**: o painel checa `releases/latest` do GitHub (`noevfx/a2r-link`, override `"repo"` no config.json) ao abrir e a cada 6h; versão nova → cartão "Atualizar agora" que baixa o zip do release, extrai em `%LOCALAPPDATA%\Programs\A2R Link` (macOS: `Application Support/NoeVFX`) e roda o `install.py` de lá — um clique, depois é só reabrir o programa. Sem release ou sem net: silêncio. `bridge.py check-update`/`self-update` (semver real, asset `.zip` ou zipball).

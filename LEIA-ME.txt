@@ -1,4 +1,4 @@
-A2R LINK 0.1.4 - WINDOWS
+A2R LINK 0.1.5 - WINDOWS
 Do Premiere e do After Effects direto para o DaVinci Resolve, com um clique. Sem exportar timeline.
 
 O QUE PRECISA
@@ -35,7 +35,7 @@ Causas mais comuns: DaVinci fechado, sem projeto aberto, ou "External scripting"
 
 ===== ENGLISH =====
 
-A2R LINK 0.1.4 - WINDOWS
+A2R LINK 0.1.5 - WINDOWS
 From Premiere and After Effects straight into DaVinci Resolve, one click. No timeline export.
 
 REQUIREMENTS

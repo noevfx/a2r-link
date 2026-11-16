@@ -1,6 +1,6 @@
 # A2R Link
 
-![versão](https://img.shields.io/badge/vers%C3%A3o-0.1.4-blue)
+![versão](https://img.shields.io/badge/vers%C3%A3o-0.1.5-blue)
 ![plataforma](https://img.shields.io/badge/Windows-10%2F11-555)
 ![licença](https://img.shields.io/badge/licen%C3%A7a-gratuita-green)
 

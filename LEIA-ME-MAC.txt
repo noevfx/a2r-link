@@ -1,4 +1,4 @@
-A2R LINK 0.1.2 - MAC
+A2R LINK 0.1.5 - MAC
 Do Premiere e do After Effects direto para o DaVinci Resolve, com um clique. Sem exportar timeline.
 
 O QUE PRECISA
@@ -41,7 +41,7 @@ As timelines e bins ja criados no DaVinci ficam (sao seus).
 
 ===== ENGLISH =====
 
-A2R LINK 0.1.2 - MAC
+A2R LINK 0.1.5 - MAC
 From Premiere and After Effects straight into DaVinci Resolve, one click. No timeline export.
 
 REQUIREMENTS
