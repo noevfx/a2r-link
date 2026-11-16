@@ -133,7 +133,7 @@ Regras:
 
 ## 8. Limitações conhecidas
 
-- **UI de retime do Resolve achata o ease**: clicar/editar na barra "Speed Change" do clipe destrói as alças (comportamento do Resolve). Re-export/roundtrip DRT preserva.
+- **Editar a rampa na barra "Speed Change" do Resolve remove as alças** (comportamento do Resolve). Re-export/roundtrip DRT preserva.
 - **Ease de rampa é aproximação**: o modelo do Resolve é canto arredondado (alças arredondam a junção das retas, não são tangentes Bézier da origem). Modo Editável aproxima pela mesma contagem de nós; quem precisa bit-a-bit usa o modo Precisa (denso, sem alças).
 - **Keyframes de Inspector saem densos** (1 ponto/quadro) — valor certo, edição menos limpa.
 - **API não persiste timeline até salvar o projeto** — timelines criadas por script somem se o Resolve recarregar sem salvar.

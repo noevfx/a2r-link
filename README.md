@@ -8,7 +8,7 @@
 
 ### Por que ele é diferente
 
-- **Keyframes chegam vivos** — Position/Scale/Rotation/Opacity não são "achatados": as alças Bézier aparecem no Inspector do Resolve e você continua editando. A speed ramp vai com **os mesmos nós da origem** (modo Editável, padrão) ou **quadro a quadro** (modo Precisa) — chave no painel. Rampa do Premiere sai mesmo sem API pra isso (lida do `.prproj`). Nenhuma ponte gratuita entrega isso.
+- **Keyframes chegam vivos** — Position/Scale/Rotation/Opacity chegam com as alças Bézier originais no Inspector do Resolve: você continua editando a curva em vez de recomeçar do zero. A speed ramp vai com **os mesmos nós da origem** (modo Editável, padrão) ou **quadro a quadro** (modo Precisa) — chave no painel. Rampa do Premiere sai mesmo sem API pra isso (lida do `.prproj`). Nenhuma ponte gratuita entrega isso.
 - **Feito pra revisão de edição** — mande de novo só os takes alterados: o A2R substitui cada um na mesma posição e trilha, sem ripple. A timeline do Resolve vira um espelho da sua edição no Premiere/AE.
 - **Transições e efeitos de verdade** — ~66 transições saem como tipos reais do Resolve (wipe é wipe, não dissolve disfarçado), ~60 efeitos viram Resolve FX nativos no Inspector e ~40 efeitos de áudio viram Fairlight FX. Param animado vira Fusion comp com chaves.
 - **A timeline nasce igual à origem** — resolução e fps certos no primeiro envio: o vertical 1080×1920 de reels sai vertical, 29.97 sai 29.97.
@@ -86,7 +86,7 @@ O projeto já foi pro Resolve e o cliente pediu alteração? Você troca os take
 - **Lumetri Color** — a rota correta é grade nativa/`SetCDL`, não OFX. Fora do escopo.
 - **Efeitos sem equivalente no Resolve** (terceiros, alguns nativos) — ficam fora com aviso por nome.
 - **Track mattes, máscaras e tracking** — máscaras do AE são detectadas e avisadas; a transferência real não existe.
-- **Parenting, expressões, 3D real** — camada 3D sai achatada (aviso); motion blur não vai.
+- **Parenting, expressões, 3D real** — camada 3D sai como 2D (aviso); motion blur não vai.
 - **Params de transição** (direção do wipe, centro do iris, canto do page curl) — a API não expõe; vai com os defaults do template.
 - **Pixel-strengths sem escala provada** — vai o default + aviso (a escala do blur gaussiano foi medida; demais, conservador).
 
@@ -107,7 +107,7 @@ Premiere/AE (CEP panel + ExtendScript) → clipboard.json → bridge.py
 ## Limitações conhecidas
 
 - **Windows testado**; o instalador Mac existe (`INSTALAR.command`) mas não foi validado em hardware.
-- A UI de retime do Resolve achata o ease se você clicar nela (comportamento do Resolve — re-export preserva).
+- Editar a rampa na barra "Speed Change" do Resolve remove as alças dela (comportamento do próprio Resolve — reexportar pelo DRT preserva).
 - Keyframes de efeito animados usam frames de timeline do clipe; com speed ramp podem desalinhar.
 - Transições antigas junto de takes preservados podem duplicar na borda em casos raros.
 
@@ -129,4 +129,4 @@ Ver [CHANGELOG.md](CHANGELOG.md) — o estado detalhado de desenvolvimento fica 
 
 ### English (summary)
 
-**A2R Link** sends the whole timeline or just the selected takes from Adobe Premiere Pro / After Effects straight into a DaVinci Resolve Studio timeline — no XML, no AAF. Re-sending updated takes replaces only what changed, in the same position and track — built for edit revisions. New timelines inherit the source resolution/fps (vertical reels stay vertical). Position, tracks, Motion/Inspector keyframes (real Bézier easing — editable, not flattened), speed ramps (same node count as the source, or frame-accurate — panel switch; Premiere ramps read from the `.prproj` the DOM can't see), reverse, freeze frames, blend modes, ~66 transitions (real Resolve types incl. Fusion transitions), video/audio fades, ~60 video effects (native Resolve FX, incl. animated params via Fusion comps), ~40 Fairlight audio effects, titles, adjustment layers, nested content and markers — all with per-feature warnings instead of silent drops. Windows tested; macOS installer included (unverified). Panels check GitHub Releases and self-update with one click.
+**A2R Link** sends the whole timeline or just the selected takes from Adobe Premiere Pro / After Effects straight into a DaVinci Resolve Studio timeline — no XML, no AAF. Re-sending updated takes replaces only what changed, in the same position and track — built for edit revisions. New timelines inherit the source resolution/fps (vertical reels stay vertical). Position, tracks, Motion/Inspector keyframes (real Bézier easing — stays editable in the Inspector), speed ramps (same node count as the source, or frame-accurate — panel switch; Premiere ramps read from the `.prproj` the DOM can't see), reverse, freeze frames, blend modes, ~66 transitions (real Resolve types incl. Fusion transitions), video/audio fades, ~60 video effects (native Resolve FX, incl. animated params via Fusion comps), ~40 Fairlight audio effects, titles, adjustment layers, nested content and markers — all with per-feature warnings instead of silent drops. Windows tested; macOS installer included (unverified). Panels check GitHub Releases and self-update with one click.
