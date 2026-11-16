@@ -46,12 +46,11 @@ O projeto já foi pro Resolve e o cliente pediu alteração? Você troca os take
 | Posição, corte e trilha | ✅ exatos, vídeo e áudio |
 | Seleção parcial | ✅ só os takes selecionados (ou a timeline inteira) |
 | Revisão de edição | ✅ reenvio com takes novos substitui só o que mudou, na mesma posição/trilha — o resto fica intacto |
-| Anchor Point, Position, Scale, Rotation, Opacity | ✅ estáticos e animados (curva real: ease, Bézier, hold — amostrada e reduzida) |
-| Ease editável no Inspector | ✅ chaves com tangentes (não assadas) |
+| Anchor Point, Position, Scale, Rotation, Opacity | ✅ estáticos e animados — **curvas Bézier chegam corretas e editáveis** (alças no Inspector do Resolve, não assadas) |
 | Flip H/V, escala não uniforme | ✅ |
 | Velocidade constante, clipe aparado | ✅ |
-| Speed ramp / Time Remap (AE) | ✅ timemap com ease editável |
-| Time Remap do Premiere | ✅ lido do `.prproj` (o DOM não expõe) |
+| Speed ramp do After Effects | ✅ timemap real — as **curvas Bézier da rampa chegam corretas e editáveis** no Resolve (alças no Inspector de retime, não assadas) |
+| Speed ramp / Time Remap do Premiere | ✅ lido do `.prproj` (o DOM não expõe) — mesma curva Bézier editável no Resolve |
 | Reverso | ✅ timemap descendente |
 | Freeze frame | ✅ Frame Hold / Insert Frame Hold do PR, `timeStretch=0` do AE |
 | Blend modes | ✅ Screen/Multiply/Overlay/Soft Light etc. → `CompositeMode` (modos sem equivalente → aviso) |
