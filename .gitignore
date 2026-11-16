@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+_backups/
+release/
+tests/
+nul
+*.log

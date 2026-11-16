@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>A2R Link</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; }
+    body { font-family: "Segoe UI", system-ui, sans-serif; font-size: 12px; background: #232323; color: #d6d6d6; padding: 12px; overflow-y: auto; }
+    header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; row-gap: 6px; }
+    .logo { width: 28px; height: 28px; border-radius: 7px; overflow: hidden; flex: none; }
+    .logo img { width: 100%; height: 100%; display: block; }
+    #upd { border: 1px solid #2f6fed; background: #1e2c47; }
+    #upd .valor { color: #cfe0ff; }
+    #upd button { background: #2f6fed; border-color: #2f6fed; color: #fff; font-weight: 600; padding: 6px 12px; margin-top: 7px; }
+    #upd button:hover { background: #4a82f0; }
+    #upd .mini { color: #8fa8d4; }
+    .titulo { flex: 1 1 130px; min-width: 0; }
+    .nome { font-size: 14px; font-weight: 600; color: #fff; line-height: 1.1; }
+    .sub { font-size: 11px; color: #8d8d8d; }
+    .pilula { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #9a9a9a; padding: 3px 8px; border-radius: 10px; background: #2c2c2c; white-space: nowrap; flex: none; }
+    .ponto { width: 7px; height: 7px; border-radius: 50%; background: #777; }
+    .pilula.on .ponto { background: #5fcf7a; } .pilula.on { color: #bfe8c9; }
+    .pilula.off .ponto { background: #e0a040; } .pilula.off { color: #ecd2a0; }
+    .cartao { background: #2c2c2c; border-radius: 6px; padding: 10px 12px; margin-bottom: 10px; }
+    .rot { font-size: 11px; color: #8d8d8d; margin-bottom: 2px; }
+    .valor { font-size: 13px; color: #f0f0f0; }
+    button { font-family: inherit; font-size: 12px; border-radius: 6px; cursor: pointer; border: 1px solid #4a4a4a; background: #333; color: #e2e2e2; padding: 8px 10px; }
+    button:hover { background: #3f3f3f; }
+    button:disabled { opacity: .45; cursor: default; }
+    button.principal { width: 100%; padding: 12px; font-size: 13px; font-weight: 600; background: #2f6fed; border-color: #2f6fed; color: #fff; margin-bottom: 8px; }
+    button.principal:hover { background: #4a82f0; }
+    button.principal:disabled { background: #2a4f99; border-color: #2a4f99; }
+    .linha { display: flex; gap: 8px; margin-bottom: 10px; }
+    .linha button { flex: 1; }
+    .destino { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; font-size: 11px; color: #8d8d8d; }
+    .destino select { flex: 1; font-family: inherit; font-size: 12px; border-radius: 6px; border: 1px solid #4a4a4a; background: #333; color: #e2e2e2; padding: 7px 8px; cursor: pointer; }
+    .destino select:hover { background: #3f3f3f; }
+    .ok { background: #1f3a26; border: 1px solid #2e5a3a; } .ok .valor { color: #8fe0a0; }
+    .aviso { background: #3a3220; border: 1px solid #5a4c2a; } .aviso .valor { color: #e8c878; }
+    .erro { background: #3d2222; border: 1px solid #6a3030; } .erro .valor { color: #ff9a9a; }
+    .oculto { display: none; }
+    #resultado { max-height: 160px; overflow-y: auto; }
+    ul { margin: 6px 0 0; padding-left: 16px; color: #cdb98a; font-size: 11px; line-height: 1.5; }
+    .caminho { font-size: 11px; color: #9ab8a2; margin-top: 3px; }
+    .btnDebug { display: block; width: 100%; margin-top: 8px; padding: 8px 10px; font-weight: 600; background: #553030; border-color: #7a4444; color: #ffd9d9; }
+    .btnDebug:hover { background: #663a3a; }
+    details { color: #8d8d8d; font-size: 11px; }
+    summary { cursor: pointer; padding: 2px 0; }
+    pre { white-space: pre-wrap; word-break: break-word; font-family: Consolas, monospace; font-size: 10.5px; color: #9a9a9a; margin: 6px 0 0; max-height: 150px; overflow-y: auto; }
+    .gira { display: inline-block; width: 11px; height: 11px; border: 2px solid rgba(255,255,255,.35); border-top-color: #fff; border-radius: 50%; animation: g .8s linear infinite; vertical-align: -2px; margin-right: 6px; }
+    @keyframes g { to { transform: rotate(360deg); } }
+    #estado { display: none; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo"><img src="img/logo.png" alt="A2R Link" /></div>
+    <div class="titulo"><div class="nome">A2R Link</div><div class="sub" id="subtitulo">Adobe para DaVinci Resolve</div></div>
+    <div class="pilula" id="conexao"><span class="ponto"></span><span id="conexaoTxt">verificando</span></div>
+  </header>
+
+  <div class="cartao oculto" id="upd">
+    <div class="rot" id="updRot">Atualização</div>
+    <div class="valor" id="updTxt"></div>
+    <button id="bUpd">Atualizar agora</button>
+    <div class="mini" id="updMini"></div>
+  </div>
+
+  <div class="cartao" id="selecao">
+    <div class="rot" id="selRot">Selecionado</div>
+    <div class="valor" id="selValor">lendo...</div>
+  </div>
+
+  <button id="bEnviar" class="principal">Enviar ao DaVinci</button>
+  <div class="linha">
+    <button id="bCopiar" title="Le o que esta selecionado (ou tudo, se nada estiver) e guarda">Copiar</button>
+    <button id="bColar" title="Monta no DaVinci o que foi copiado">Colar</button>
+  </div>
+  <div class="destino">
+    <span id="destinoRot">Destino</span>
+    <select id="selDestino">
+      <option value="nova" selected>Nova timeline</option>
+      <option value="existente">Timeline de mesmo nome</option>
+    </select>
+  </div>
+
+  <div class="cartao oculto" id="resultado"></div>
+
+  <details id="detalhes"><summary>Detalhes</summary><pre id="log"></pre></details>
+  <div id="estado">pronto</div>
+  <script src="./js/config.js"></script>
+  <script src="./js/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,82 @@
+A2R LINK 0.1.2 - MAC
+Do Premiere e do After Effects direto para o DaVinci Resolve, com um clique. Sem exportar timeline.
+
+O QUE PRECISA
+- Mac (Apple Silicon ou Intel)
+- DaVinci Resolve STUDIO (a versao gratuita nao serve)
+- Premiere Pro e/ou After Effects
+- Python 3.14, de python.org (botao Downloads > macOS)
+
+INSTALAR
+1. Duplo clique em INSTALAR.command.
+   Se o macOS bloquear com "desenvolvedor nao identificado" ou "nao pode ser aberto":
+   clique com o BOTAO DIREITO no arquivo > Abrir > Abrir. Pronto, e so isso.
+   (Se mesmo assim nao abrir: abra o Terminal, arraste INSTALAR.command para dentro
+   dele, aperte Enter.)
+2. No DaVinci: DaVinci Resolve > Settings... > System > General >
+   "External scripting using" = Local. Reinicie o DaVinci.
+3. Reinicie o Premiere e o After Effects.
+
+USAR
+1. Abra o DaVinci Resolve Studio com um projeto aberto.
+2. No Premiere ou no After: menu Janela > Extensoes > A2R Link.
+3. Selecione os clipes (Premiere) ou as camadas de video (After) e clique em "Enviar ao DaVinci".
+   Sem selecao, vai tudo da sequencia/comp ativa.
+4. No DaVinci aparece: bin com o nome do projeto > sub-bin com o nome da sequencia/comp > a midia e a timeline.
+   Reenviar nao sobrescreve: cria "Nome 2".
+
+O QUE VAI: Anchor Point, Position, Scale, Rotation, Opacity, keyframes e curvas, Flip, corte, trilhas, velocidade.
+O QUE NAO VAI: efeitos e plugins, track mattes, mascaras, parenting, expressoes (3D vira 2D).
+
+DEU ERRO?
+O cartao vermelho explica em portugues e ja gera um relatorio na hora.
+Clique em "Relatorio para o suporte": a pasta abre com o arquivo A2R-debug-*.zip
+selecionado. Mande esse zip para o suporte junto com um print.
+Causas mais comuns: DaVinci fechado, sem projeto aberto, ou "External scripting" fora de Local.
+
+DESINSTALAR
+Duplo clique em DESINSTALAR.command (mesmo esquema: botao direito > Abrir se bloquear).
+Remove os paineis, o script do DaVinci e a configuracao.
+As timelines e bins ja criados no DaVinci ficam (sao seus).
+
+===== ENGLISH =====
+
+A2R LINK 0.1.2 - MAC
+From Premiere and After Effects straight into DaVinci Resolve, one click. No timeline export.
+
+REQUIREMENTS
+- Mac (Apple Silicon or Intel)
+- DaVinci Resolve STUDIO (the free version does not work)
+- Premiere Pro and/or After Effects
+- Python 3.14, from python.org (Downloads button > macOS)
+
+INSTALL
+1. Double-click INSTALAR.command.
+   If macOS blocks it with "unidentified developer" or "cannot be opened":
+   RIGHT-CLICK the file > Open > Open. That is all.
+   (If it still will not open: open Terminal, drag INSTALAR.command into it, press Enter.)
+2. In DaVinci: DaVinci Resolve > Settings... > System > General >
+   "External scripting using" = Local. Restart DaVinci.
+3. Restart Premiere and After Effects.
+
+USE
+1. Open DaVinci Resolve Studio with a project open.
+2. In Premiere or After: Window > Extensions > A2R Link.
+3. Select the clips (Premiere) or video layers (After) and click "Send to DaVinci".
+   With nothing selected, everything from the active sequence/comp is sent.
+4. In DaVinci you get: a bin named after the project > a sub-bin named after the sequence/comp > media and timeline.
+   Resending does not overwrite: it creates "Name 2".
+
+WHAT IS SENT: Anchor Point, Position, Scale, Rotation, Opacity, keyframes and curves, Flip, trim, tracks, speed.
+WHAT IS NOT: effects and plugins, track mattes, masks, parenting, expressions (3D becomes 2D).
+
+IF SOMETHING FAILS
+The red card explains the problem and creates a report on the spot.
+Click "Support report": the folder opens with the A2R-debug-*.zip file selected.
+Send that zip to support along with a screenshot.
+Most common causes: DaVinci closed, no project open, or "External scripting" not set to Local.
+
+UNINSTALL
+Double-click DESINSTALAR.command (same deal: right-click > Open if blocked).
+Removes the panels, the DaVinci script and the configuration.
+Timelines and bins already created in DaVinci stay (they are yours).
