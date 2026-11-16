@@ -6,6 +6,14 @@
 
 **Envie a timeline inteira ou só os takes selecionados do Adobe Premiere Pro e do After Effects direto para a timeline do DaVinci Resolve** — sem exportar XML, sem AAF. Os takes chegam abertos na timeline de edição, com keyframes no Inspector (sem Fusion, sem compound clip).
 
+### Por que ele é diferente
+
+- **Curvas Bézier chegam vivas** — a rampa de velocidade e o Motion não são "achatados": as alças aparecem no Inspector do Resolve e você continua editando. Nenhuma ponte gratuita entrega isso.
+- **Feito pra revisão de edição** — mande de novo só os takes alterados: o A2R substitui cada um na mesma posição e trilha, sem ripple. A timeline do Resolve vira um espelho da sua edição no Premiere/AE.
+- **Transições e efeitos de verdade** — ~66 transições saem como tipos reais do Resolve (wipe é wipe, não dissolve disfarçado), ~60 efeitos viram Resolve FX nativos no Inspector e ~40 efeitos de áudio viram Fairlight FX. Param animado vira Fusion comp com chaves.
+- **Honesto por construção** — o que não tem equivalente fica fora com aviso nomeado, nunca um dissolve falso ou um drop silencioso.
+- **Gratuito e aberto** — código-fonte aqui, um instalador e auto-update com um clique dentro do próprio painel.
+
 Painéis CEP para Premiere e After + script para o Resolve. Feito pela Noé VFX.
 
 ---
