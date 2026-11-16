@@ -4,7 +4,7 @@
 ![plataforma](https://img.shields.io/badge/Windows-10%2F11-555)
 ![licença](https://img.shields.io/badge/licen%C3%A7a-gratuita-green)
 
-**Copie clipes do Adobe Premiere Pro e do After Effects e cole direto na timeline do DaVinci Resolve** — sem exportar XML, sem AAF, sem passar por binário de edição. Os takes chegam abertos na timeline de edição, com keyframes no Inspector (sem Fusion, sem compound clip).
+**Envie a timeline inteira ou só os takes selecionados do Adobe Premiere Pro e do After Effects direto para a timeline do DaVinci Resolve** — sem exportar XML, sem AAF. Os takes chegam abertos na timeline de edição, com keyframes no Inspector (sem Fusion, sem compound clip).
 
 Painéis CEP para Premiere e After + script para o Resolve. Feito pela Noé VFX.
 
@@ -23,14 +23,19 @@ Para remover: `DESINSTALAR.bat` / `DESINSTALAR.command`.
 
 ## Uso
 
-1. No Premiere ou no After, selecione os clipes/camadas (ou nada — vai tudo) e clique **Copiar** (ou **Enviar ao DaVinci**).
-2. No DaVinci, rode o script **A2R Link - Colar** (ou clique **Colar** no painel).
-3. Os takes aparecem na timeline, no Media Pool organizados em `Projeto › Sequência/Comp`.
+**Enviar a timeline ou os takes** — no Premiere ou no After:
+
+1. Selecione os takes que quer mandar (clipe, camada — ou nada: aí vai a sequência/comp inteira) e clique **Enviar ao DaVinci** (ou **Copiar** + **Colar**).
+2. Os takes aparecem na timeline do Resolve, nas mesmas posições e trilhas, e no Media Pool organizados em `Projeto › Sequência/Comp`.
+
+**Atualizar uma edição que já está no DaVinci** — o modo pra quem trabalha com revisão:
+
+O projeto já foi pro Resolve e o cliente pediu alteração? Você troca os takes no Premiere/After, seleciona **só os takes novos** e manda de novo. O A2R acha a timeline de mesmo nome, **substitui só os takes que mudaram na mesma posição e trilha** e deixa todo o resto intacto — corte a corte, sem ripple, sem duplicar nada. A timeline do Resolve vira um espelho vivo da edição: cada ida e volta atualiza só o que mudou.
 
 **Destino do paste** (seletor no painel):
 
 - **Nova timeline** — cria `Nome da sequência` com resolução e fps da origem.
-- **Timeline de mesmo nome** — adiciona/substitui takes na timeline que já tem esse nome, mantendo posição e trilha originais; os demais takes ficam intactos (sem ripple). Ideal pra iterar: manda de novo só o que mudou.
+- **Timeline de mesmo nome** — adiciona/substitui takes na timeline que já existe com esse nome, mantendo posição e trilha originais; os demais takes ficam intactos (sem ripple). É o modo das revisões: manda de novo só o que mudou.
 
 **Auto-update**: o painel verifica releases novas no GitHub ao abrir (e a cada 6h). Quando sai versão nova, aparece um cartão — **um clique baixa e instala**; depois é só reabrir o programa.
 
@@ -39,7 +44,8 @@ Para remover: `DESINSTALAR.bat` / `DESINSTALAR.command`.
 | Recurso | Estado |
 |---|---|
 | Posição, corte e trilha | ✅ exatos, vídeo e áudio |
-| Seleção parcial | ✅ só os takes selecionados |
+| Seleção parcial | ✅ só os takes selecionados (ou a timeline inteira) |
+| Revisão de edição | ✅ reenvio com takes novos substitui só o que mudou, na mesma posição/trilha — o resto fica intacto |
 | Anchor Point, Position, Scale, Rotation, Opacity | ✅ estáticos e animados (curva real: ease, Bézier, hold — amostrada e reduzida) |
 | Ease editável no Inspector | ✅ chaves com tangentes (não assadas) |
 | Flip H/V, escala não uniforme | ✅ |
@@ -113,4 +119,4 @@ Ver [CHANGELOG.md](CHANGELOG.md) — o estado detalhado de desenvolvimento fica 
 
 ### English (summary)
 
-**A2R Link** copies clips from Adobe Premiere Pro / After Effects straight into a DaVinci Resolve Studio timeline — no XML, no AAF. Timeline position, tracks, Motion/Inspector keyframes (with real easing), speed, reverse, freeze frames, blend modes, ~66 transitions (real Resolve types incl. Fusion transitions), video/audio fades, ~60 video effects (native Resolve FX, incl. animated params via Fusion comps), ~40 Fairlight audio effects, titles, adjustment layers, nested content and markers — all with per-feature warnings instead of silent drops. Windows tested; macOS installer included (unverified). Panels check GitHub Releases and self-update with one click.
+**A2R Link** sends the whole timeline or just the selected takes from Adobe Premiere Pro / After Effects straight into a DaVinci Resolve Studio timeline — no XML, no AAF. Re-sending updated takes replaces only what changed, in the same position and track — built for edit revisions. Position, tracks, Motion/Inspector keyframes (with real easing), speed, reverse, freeze frames, blend modes, ~66 transitions (real Resolve types incl. Fusion transitions), video/audio fades, ~60 video effects (native Resolve FX, incl. animated params via Fusion comps), ~40 Fairlight audio effects, titles, adjustment layers, nested content and markers — all with per-feature warnings instead of silent drops. Windows tested; macOS installer included (unverified). Panels check GitHub Releases and self-update with one click.
