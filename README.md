@@ -8,7 +8,7 @@
 
 ### Por que ele é diferente
 
-- **As curvas chegam vivas** — Position, Scale, Rotation e Opacity chegam com as alças Bézier originais no Inspector do Resolve: você continua editando a curva em vez de recomeçar do zero. A speed ramp vai com **a mesma quantidade de keyframes que você criou** (modo Editável, padrão) ou **quadro a quadro** (modo Precisa) — chave no painel. E a rampa do Premiere sai mesmo sem o Premiere oferecer isso por script: o A2R lê a curva direto do arquivo do projeto. Nenhuma ponte gratuita entrega isso.
+- **As curvas chegam vivas** — Position, Scale, Rotation e Opacity chegam com as alças Bézier originais no Inspector do Resolve: você continua editando a curva em vez de recomeçar do zero. A speed ramp vai com **a mesma quantidade de keyframes que você criou** (modo Editável, padrão) ou **um keyframe a cada quadro** (modo Precisa) — chave no painel. E a rampa do Premiere sai mesmo sem o Premiere oferecer isso por script: o A2R lê a curva direto do arquivo do projeto. Nenhuma ponte gratuita entrega isso.
 - **Feito pra revisão de edição** — o cliente pediu alteração? Você ajusta no Premiere/After, seleciona só os clipes novos e manda de novo: o A2R substitui cada um na mesma posição e trilha, sem deslocar nada em volta. A timeline do Resolve vira um espelho da sua edição.
 - **Transições e efeitos de verdade** — ~66 transições chegam como os tipos reais do Resolve (wipe é wipe, não dissolve disfarçado), ~60 efeitos viram efeitos nativos do Resolve no Inspector e ~40 efeitos de áudio viram efeitos do Fairlight. Parâmetro animado vira comp do Fusion com as chaves.
 - **A timeline nasce igual à origem** — resolução e fps certos no primeiro envio: o vertical 1080×1920 de reels sai vertical, 29.97 sai 29.97.
@@ -46,7 +46,7 @@ O projeto já foi pro Resolve e o cliente pediu alteração? Você troca os clip
 
 - **Destino › Nova timeline** — cria uma timeline nova com o nome da sequência/comp, na resolução e no fps da origem. **Mesmo nome** — cola na timeline que já existe com esse nome: substitui só os clipes que mudaram e mantém o resto. É o modo das revisões.
 - **Rampa › Editável** (padrão) — a rampa de velocidade chega com a **mesma quantidade de keyframes que você criou**, com as alças: no Premiere são os próprios keyframes de velocidade; no After, os keyframes são posicionados na curva para segurar a rajada. Fica fácil de mexer no Resolve e bem próxima do original.
-- **Rampa › Precisa** — um ponto por quadro, sem alças: segue a curva original quadro a quadro, pra quando a rampa tem que bater exatamente.
+- **Rampa › Precisa** — um keyframe a cada quadro, sem alças: a curva enche de keyframes, mas segue o original quadro a quadro — pra quando a rampa tem que bater exatamente.
 
 **Auto-update**: o painel verifica se saiu versão nova no GitHub toda vez que abre (e a cada 6h). Quando sai, aparece um cartão — **um clique baixa e instala**; depois é só reabrir o programa.
 
@@ -60,8 +60,8 @@ O projeto já foi pro Resolve e o cliente pediu alteração? Você troca os clip
 | Anchor Point, Position, Scale, Rotation, Opacity | ✅ estáticos e animados — **as curvas chegam editáveis** no Inspector do Resolve |
 | Flip H/V, escala não uniforme | ✅ |
 | Velocidade constante, clipe aparado | ✅ qualquer %, sem deslocar os vizinhos |
-| Speed ramp do After Effects | ✅ Editável: mesma quantidade de keyframes que no AE (aproximada — o ease do Resolve arredonda cantos, não é Bézier livre; a rajada fica). Precisa: quadro a quadro |
-| Speed ramp / Time Remap do Premiere | ✅ lida do arquivo do projeto (o Premiere não expõe por script) — Editável nos keyframes de velocidade (quase exato); Precisa quadro a quadro |
+| Speed ramp do After Effects | ✅ Editável: mesma quantidade de keyframes que no AE (aproximada — o ease do Resolve arredonda cantos, não é Bézier livre; a rajada fica). Precisa: um keyframe por quadro |
+| Speed ramp / Time Remap do Premiere | ✅ lida do arquivo do projeto (o Premiere não expõe por script) — Editável nos keyframes de velocidade (quase exato); Precisa: um keyframe por quadro |
 | Reverso | ✅ |
 | Freeze frame | ✅ Frame Hold do Premiere e camada congelada do After |
 | Blend modes | ✅ Screen, Multiply, Overlay, Soft Light etc. (modos sem equivalente → aviso) |
@@ -129,4 +129,4 @@ Ver [CHANGELOG.md](CHANGELOG.md) — o estado detalhado de desenvolvimento fica 
 
 ### English (summary)
 
-**A2R Link** sends the whole timeline or just the selected clips from Adobe Premiere Pro / After Effects straight into a DaVinci Resolve Studio timeline — one click, no XML, no AAF. Re-sending updated clips replaces only what changed, in the same position and track — built for edit revisions. New timelines inherit the source resolution/fps (vertical reels stay vertical). Position, tracks, Motion/Inspector keyframes (real Bézier easing — stays editable in the Inspector), speed ramps (same keyframe count as the source, or frame-accurate — panel switch; Premiere ramps read from the `.prproj` the DOM can't see), reverse, freeze frames, blend modes, ~66 transitions (real Resolve types incl. Fusion transitions), video/audio fades, ~60 video effects (native Resolve FX, incl. animated params via Fusion comps), ~40 Fairlight audio effects, titles, adjustment layers, nested content and markers — all with per-feature warnings instead of silent drops. Windows tested; macOS installer included (unverified). Panels check GitHub Releases and self-update with one click.
+**A2R Link** sends the whole timeline or just the selected clips from Adobe Premiere Pro / After Effects straight into a DaVinci Resolve Studio timeline — one click, no XML, no AAF. Re-sending updated clips replaces only what changed, in the same position and track — built for edit revisions. New timelines inherit the source resolution/fps (vertical reels stay vertical). Position, tracks, Motion/Inspector keyframes (real Bézier easing — stays editable in the Inspector), speed ramps (same keyframe count as the source, or one keyframe per frame — panel switch; Premiere ramps read from the `.prproj` the DOM can't see), reverse, freeze frames, blend modes, ~66 transitions (real Resolve types incl. Fusion transitions), video/audio fades, ~60 video effects (native Resolve FX, incl. animated params via Fusion comps), ~40 Fairlight audio effects, titles, adjustment layers, nested content and markers — all with per-feature warnings instead of silent drops. Windows tested; macOS installer included (unverified). Panels check GitHub Releases and self-update with one click.
